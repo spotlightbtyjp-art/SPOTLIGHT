@@ -19,7 +19,7 @@ const notoSansThai = Noto_Sans_Thai({
 
 
 export const metadata = {
-  title: "BEAUTY",
+  title: "SPOTLIGHT",
   description: "ระบบจองบริการเสริมความงาม",
 };
 
