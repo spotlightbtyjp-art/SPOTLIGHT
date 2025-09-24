@@ -143,8 +143,31 @@ export default function AdminSettingsPage() {
         fetchInitialData();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleNotificationChange = (group, key, value) => {
-        setSettings(prev => ({ ...prev, [group]: { ...prev[group], [key]: value } }));
+    const handleNotificationChange = async (group, key, value) => {
+        setSettings(prev => {
+            const newSettings = { ...prev, [group]: { ...prev[group], [key]: value } };
+            // If the master switch is turned off, also turn off the sub-switches visually.
+            if (group === 'allNotifications' && key === 'enabled' && !value) {
+                newSettings.adminNotifications.enabled = false;
+                newSettings.customerNotifications.enabled = false;
+            }
+            return newSettings;
+        });
+        
+        try {
+            setIsSaving(true);
+            const { updatedAt, ...notificationData } = settings;
+            const result = await saveNotificationSettings(notificationData);
+            if (result.success) {
+                showToast('บันทึกการตั้งค่าแจ้งเตือนสำเร็จ', 'success');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'error');
+        } finally {
+            setIsSaving(false);
+        }
     };
     
     const handleSave = async () => {
@@ -182,7 +205,6 @@ export default function AdminSettingsPage() {
         }
     };
     
-    // โค้ดส่วน handleSendNow (โค้ดเดิม)
     const handleSendNow = async (isMock = false) => {
         setIsSending(true);
         try {
@@ -220,9 +242,7 @@ export default function AdminSettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* --- Column 1: Profile, Booking, Holidays, Payment, Calendar --- */}
                 <div className="space-y-6">
-                    {/* --- NEW CARD: เพิ่ม Card สำหรับ Profile --- */}
                     <SettingsCard title="โปรไฟล์ร้าน">
                         <div className="space-y-2">
                             <div>
@@ -254,9 +274,7 @@ export default function AdminSettingsPage() {
                         </div>
                     </SettingsCard>
                     
-                    {/* โค้ดเดิมสำหรับ Card อื่นๆ */}
                     <SettingsCard title="โหมดและคิวการจอง">
-                        {/* ... เนื้อหาเดิมของ Card นี้ ... */}
                         <div>
                             <label className="block text-sm font-medium mb-1">Buffer (นาที) ระหว่างคิว</label>
                             <input 
@@ -308,8 +326,9 @@ export default function AdminSettingsPage() {
                             </div>
                         </div>
                     </SettingsCard>
+                    
+
                     <SettingsCard title="การตั้งค่าการชำระเงิน">
-                       {/* ... เนื้อหาเดิมของ Card นี้ ... */}
                        <div className="flex items-center mb-2 space-x-6">
                             <label className="flex items-center"><input type="radio" name="paymentMethod" value="promptpay" checked={paymentSettings.method === 'promptpay'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>PromptPay</label>
                             <label className="flex items-center"><input type="radio" name="paymentMethod" value="image" checked={paymentSettings.method === 'image'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>รูปภาพ QR</label>
@@ -334,32 +353,9 @@ export default function AdminSettingsPage() {
                             </div>
                         )}
                     </SettingsCard>
-                     <SettingsCard title="Google Calendar Sync">
-                        {/* ... เนื้อหาเดิมของ Card นี้ ... */}
-                        <Toggle 
-                            label="เปิดการเชื่อมต่อ" 
-                            checked={calendarSettings.enabled}
-                            onChange={(value) => setCalendarSettings(prev => ({...prev, enabled: value}))}
-                        />
-                        {calendarSettings.enabled && (
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Google Calendar ID</label>
-                                <input 
-                                    type="email" 
-                                    value={calendarSettings.calendarId || ''} 
-                                    onChange={e => setCalendarSettings(prev => ({...prev, calendarId: e.target.value}))} 
-                                    className="border rounded-md px-2 py-1 w-full text-sm"
-                                    placeholder="your-calendar-id@group.calendar.google.com"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                    ดูได้จากหน้า Settings ของปฏิทิน และต้องแชร์ให้ Service Account Email ด้วย
-                                </p>
-                            </div>
-                        )}
-                    </SettingsCard>
+
                 </div>
 
-                {/* --- Column 2: Schedule & Notifications (โค้ดเดิม) --- */}
                 <div className="space-y-6">
                     <SettingsCard title="เวลาทำการ">
                         {["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"].map((dayName, dayIndex) => {
@@ -379,36 +375,95 @@ export default function AdminSettingsPage() {
                             );
                         })}
                     </SettingsCard>
+                    <SettingsCard title="วันหยุด">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">เพิ่มวันหยุด</label>
+                            <div className="flex gap-2 items-center mb-2">
+                                <input 
+                                    type="date" 
+                                    value={bookingSettings._newHolidayDate || ''} 
+                                    onChange={e => setBookingSettings(prev => ({ ...prev, _newHolidayDate: e.target.value }))} 
+                                    className="border rounded-md px-2 py-1 text-sm flex-1"
+                                    min={new Date().toISOString().split('T')[0]}
+                                />
+                                <input 
+                                    type="text" 
+                                    value={bookingSettings._newHolidayReason || ''} 
+                                    onChange={e => setBookingSettings(prev => ({ ...prev, _newHolidayReason: e.target.value }))} 
+                                    className="border rounded-md px-2 py-1 text-sm flex-1"
+                                    placeholder="หมายเหตุ (ไม่บังคับ)"
+                                />
+                                <button 
+                                    type="button" 
+                                    className="bg-indigo-500 text-white px-3 py-1 rounded hover:bg-indigo-600 text-sm"
+                                    onClick={() => {
+                                        if (!bookingSettings._newHolidayDate) return;
+                                        setBookingSettings(prev => ({
+                                            ...prev,
+                                            holidayDates: [
+                                                ...(prev.holidayDates || []),
+                                                { 
+                                                    date: prev._newHolidayDate,
+                                                    reason: prev._newHolidayReason || undefined
+                                                }
+                                            ].sort((a, b) => a.date.localeCompare(b.date)),
+                                            _newHolidayDate: '',
+                                            _newHolidayReason: ''
+                                        }))
+                                    }}
+                                    disabled={!bookingSettings._newHolidayDate}
+                                >
+                                    เพิ่ม
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                                {(bookingSettings.holidayDates || []).map(holiday => (
+                                    <span key={holiday.date} className="inline-flex items-center bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">
+                                        {holiday.date} {holiday.reason && `(${holiday.reason})`}
+                                        <button 
+                                            type="button" 
+                                            className="ml-1.5 text-red-500 hover:text-red-700"
+                                            onClick={() => setBookingSettings(prev => ({
+                                                ...prev,
+                                                holidayDates: prev.holidayDates.filter(h => h.date !== holiday.date)
+                                            }))}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </SettingsCard>
                     <SettingsCard title="การแจ้งเตือน LINE">
                         <Toggle label="เปิดการแจ้งเตือนทั้งหมด" checked={settings.allNotifications.enabled} onChange={(value) => handleNotificationChange('allNotifications', 'enabled', value)}/>
                         <hr/>
                         <Toggle label="แจ้งเตือน Admin" checked={settings.adminNotifications.enabled} onChange={(value) => handleNotificationChange('adminNotifications', 'enabled', value)} disabled={!settings.allNotifications.enabled} />
                         {settings.adminNotifications.enabled && (
                             <div className="pl-4 border-l-2 ml-4 space-y-2 text-xs">
-                                <Toggle label="เมื่อมีการจองใหม่" checked={settings.adminNotifications.newBooking} onChange={(value) => handleNotificationChange('adminNotifications', 'newBooking', value)} disabled={!settings.allNotifications.enabled} />
-                                <Toggle label="เมื่อลูกค้ายืนยันนัดหมาย" checked={settings.adminNotifications.customerConfirmed} onChange={(value) => handleNotificationChange('adminNotifications', 'customerConfirmed', value)} disabled={!settings.allNotifications.enabled} />
-                                <Toggle label="เมื่อมีการยกเลิก" checked={settings.adminNotifications.bookingCancelled} onChange={(value) => handleNotificationChange('adminNotifications', 'bookingCancelled', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="เมื่อมีการชำระเงิน" checked={settings.adminNotifications.paymentReceived} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentReceived', value)} disabled={!settings.allNotifications.enabled}/>
+                                <Toggle label="เมื่อมีการจองใหม่" checked={settings.adminNotifications.newBooking} onChange={(value) => handleNotificationChange('adminNotifications', 'newBooking', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled} />
+                                <Toggle label="เมื่อลูกค้ายืนยันนัดหมาย" checked={settings.adminNotifications.customerConfirmed} onChange={(value) => handleNotificationChange('adminNotifications', 'customerConfirmed', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled} />
+                                <Toggle label="เมื่อมีการยกเลิก" checked={settings.adminNotifications.bookingCancelled} onChange={(value) => handleNotificationChange('adminNotifications', 'bookingCancelled', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
+                                <Toggle label="เมื่อมีการชำระเงิน" checked={settings.adminNotifications.paymentReceived} onChange={(value) => handleNotificationChange('adminNotifications', 'paymentReceived', value)} disabled={!settings.allNotifications.enabled || !settings.adminNotifications.enabled}/>
                             </div>
                         )}
                          <hr/>
                         <Toggle label="แจ้งเตือนลูกค้า" checked={settings.customerNotifications.enabled} onChange={(value) => handleNotificationChange('customerNotifications', 'enabled', value)} disabled={!settings.allNotifications.enabled}/>
                         {settings.customerNotifications.enabled && (
                             <div className="pl-4 border-l-2 ml-4 space-y-2 text-xs">
-                                <Toggle label="เมื่อมีการจองใหม่" checked={settings.customerNotifications.newBooking} onChange={(value) => handleNotificationChange('customerNotifications', 'newBooking', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="เมื่อยืนยันการนัดหมาย" checked={settings.customerNotifications.appointmentConfirmed} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentConfirmed', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="เมื่อบริการเสร็จสิ้น" checked={settings.customerNotifications.serviceCompleted} onChange={(value) => handleNotificationChange('customerNotifications', 'serviceCompleted', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="เมื่อยกเลิกการนัดหมาย" checked={settings.customerNotifications.appointmentCancelled} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentCancelled', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="แจ้งเตือนล่วงหน้า 1 ชม." checked={settings.customerNotifications.appointmentReminder} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentReminder', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="แจ้งเตือนประจำวัน (08:00 น.)" checked={settings.customerNotifications.dailyAppointmentNotification} onChange={(value) => handleNotificationChange('customerNotifications', 'dailyAppointmentNotification', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="แจ้งเตือนชำระเงิน" checked={settings.customerNotifications.paymentInvoice} onChange={(value) => handleNotificationChange('customerNotifications', 'paymentInvoice', value)} disabled={!settings.allNotifications.enabled}/>
-                                <Toggle label="แจ้งเตือนขอรีวิว" checked={settings.customerNotifications.reviewRequest} onChange={(value) => handleNotificationChange('customerNotifications', 'reviewRequest', value)} disabled={!settings.allNotifications.enabled}/>
+                                <Toggle label="เมื่อมีการจองใหม่" checked={settings.customerNotifications.newBooking} onChange={(value) => handleNotificationChange('customerNotifications', 'newBooking', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="เมื่อยืนยันการนัดหมาย" checked={settings.customerNotifications.appointmentConfirmed} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentConfirmed', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="เมื่อบริการเสร็จสิ้น" checked={settings.customerNotifications.serviceCompleted} onChange={(value) => handleNotificationChange('customerNotifications', 'serviceCompleted', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="เมื่อยกเลิกการนัดหมาย" checked={settings.customerNotifications.appointmentCancelled} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentCancelled', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="แจ้งเตือนล่วงหน้า 1 ชม." checked={settings.customerNotifications.appointmentReminder} onChange={(value) => handleNotificationChange('customerNotifications', 'appointmentReminder', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="แจ้งเตือนประจำวัน (08:00 น.)" checked={settings.customerNotifications.dailyAppointmentNotification} onChange={(value) => handleNotificationChange('customerNotifications', 'dailyAppointmentNotification', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="แจ้งเตือนชำระเงิน" checked={settings.customerNotifications.paymentInvoice} onChange={(value) => handleNotificationChange('customerNotifications', 'paymentInvoice', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
+                                <Toggle label="แจ้งเตือนขอรีวิว" checked={settings.customerNotifications.reviewRequest} onChange={(value) => handleNotificationChange('customerNotifications', 'reviewRequest', value)} disabled={!settings.allNotifications.enabled || !settings.customerNotifications.enabled}/>
                             </div>
                         )}
                     </SettingsCard>
                 </div>
                 
-                {/* --- Column 3: Points & Daily Notifications (โค้ดเดิม) --- */}
                 <div className="space-y-6">
                      <SettingsCard title="ระบบสะสมพ้อยต์">
                         <Toggle 
@@ -469,6 +524,28 @@ export default function AdminSettingsPage() {
                                 {isSending ? 'กำลังส่ง...' : '📅 ส่งแจ้งเตือนทันที'}
                             </button>
                         </div>
+                    </SettingsCard>
+                       <SettingsCard title="Google Calendar Sync">
+                        <Toggle 
+                            label="เปิดการเชื่อมต่อ" 
+                            checked={calendarSettings.enabled}
+                            onChange={(value) => setCalendarSettings(prev => ({...prev, enabled: value}))}
+                        />
+                        {calendarSettings.enabled && (
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Google Calendar ID</label>
+                                <input 
+                                    type="email" 
+                                    value={calendarSettings.calendarId || ''} 
+                                    onChange={e => setCalendarSettings(prev => ({...prev, calendarId: e.target.value}))} 
+                                    className="border rounded-md px-2 py-1 w-full text-sm"
+                                    placeholder="your-calendar-id@group.calendar.google.com"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    ดูได้จากหน้า Settings ของปฏิทิน และต้องแชร์ให้ Service Account Email ด้วย
+                                </p>
+                            </div>
+                        )}
                     </SettingsCard>
                 </div>
             </div>

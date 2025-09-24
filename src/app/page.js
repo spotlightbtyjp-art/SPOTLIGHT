@@ -41,9 +41,13 @@ export default function LoginPage() {
 
     } catch (error) {
       // 6. จัดการข้อผิดพลาดในการล็อกอิน
-      console.error("Admin login failed:", error.code, error.message);
       let errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/invalid-email'
+      ) {
         errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
       }
       setError(errorMessage);

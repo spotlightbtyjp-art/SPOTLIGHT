@@ -70,7 +70,7 @@ const PaymentQrModal = ({ show, onClose, appointment, profile }) => {
     );
 };
 
-// --- Modal หลักสำหรับจัดการนัดหมาย ---
+// --- Modal หลักสำหรับจัดการนัดหมาย (แก้ไขแล้ว) ---
 const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
     const [showQr, setShowQr] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -83,8 +83,7 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
 
     const handleUpdatePayment = async () => {
         if (!profile?.userId) return showToast("ไม่สามารถระบุตัวตนพนักงานได้", "error");
-        if (!confirm("ยืนยันว่าได้รับชำระเงินแล้วใช่หรือไม่?")) return;
-
+        
         setIsUpdating(true);
         const result = await updatePaymentStatusByEmployee(appointment.id, profile.userId);
         if (result.success) {
@@ -98,7 +97,6 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
 
     const handleCheckIn = async () => {
         if (!profile?.userId) return showToast("ไม่สามารถระบุตัวตนพนักงานได้", "error");
-        if (!confirm("ยืนยันการเข้ารับบริการของลูกค้ารายนี้?")) return;
 
         setIsUpdating(true);
         const result = await updateAppointmentStatus(appointment.id, 'in_progress', profile.userId, 'Customer checked in');
@@ -113,7 +111,6 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
     
     const handleStatusChange = async (newStatus) => {
         if (!profile?.userId) return showToast("ไม่สามารถระบุตัวตนพนักงานได้", "error");
-        if (!confirm(`คุณต้องการเปลี่ยนสถานะเป็น "${newStatus === 'completed' ? 'เสร็จสิ้น' : 'ยกเลิก'}" ใช่หรือไม่?`)) return;
 
         setIsUpdating(true);
         const result = await updateAppointmentStatus(appointment.id, newStatus, profile.userId, `Status updated to ${newStatus}`);

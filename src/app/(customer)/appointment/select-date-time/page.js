@@ -60,8 +60,14 @@ function SelectDateTimeContent() {
     const addOns = searchParams.get('addOns');
     const { showToast, ToastComponent } = useToast();
 
-    const [date, setDate] = useState(new Date());
-    const [activeMonth, setActiveMonth] = useState(new Date());
+    const [date, setDate] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0);
+    });
+    const [activeMonth, setActiveMonth] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1, 7, 0, 0);
+    });
 
     const [time, setTime] = useState('');
     const [beauticians, setBeauticians] = useState([]);
@@ -267,7 +273,7 @@ function SelectDateTimeContent() {
                             startDate.setDate(startDate.getDate() - firstDay.getDay()); // เริ่มจากวันอาทิตย์
                             
                             const days = [];
-                            const currentDate = new Date(startDate);
+                            const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 7, 0, 0);
                             
                             // สร้างปฏิทิน 6 สัปดาห์ (42 วัน)
                             for (let i = 0; i < 42; i++) {

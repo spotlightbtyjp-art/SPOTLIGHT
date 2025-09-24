@@ -123,7 +123,7 @@ function ReviewContent() {
                 comment: comment.trim(),
                 serviceId: appointment.serviceId,
                 beauticianId: appointment.beauticianId,
-                createdAt: new Date().toISOString()
+                createdAt: require('@/lib/dateUtils').formatBangkokDate(new Date(), 'yyyy-MM-dd HH:mm:ss')
             };
 
             const result = await submitReview(reviewData);
@@ -232,7 +232,7 @@ function ReviewContent() {
                         </div>
                         <div className="flex justify-between">
                             <span>วันที่:</span>
-                            <span>{new Date(appointment.date).toLocaleDateString('th-TH')}</span>
+                            <span>{require('@/lib/dateUtils').formatBangkokDate(appointment.date, 'dd/MM/yyyy')}</span>
                         </div>
                         <div className="flex justify-between">
                             <span>เวลา:</span>

@@ -5,7 +5,7 @@ import { useLiffContext } from '@/context/LiffProvider';
 import { db } from '@/app/lib/firebase';
 import { collection, doc, getDocs, onSnapshot, query, orderBy } from 'firebase/firestore'; 
 import { redeemReward } from '@/app/actions/rewardActions';
-import { Notification } from '@/app/components/common/NotificationComponent';
+import { Notification, ConfirmationModal } from '@/app/components/common/NotificationComponent';
 import CustomerHeader from '@/app/components/CustomerHeader';
 import { useProfile } from '@/context/ProfileProvider';
 
@@ -40,6 +40,8 @@ export default function RewardsPage() {
     const [loading, setLoading] = useState(true);
     const [isRedeeming, setIsRedeeming] = useState(false);
     const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+    const [showModal, setShowModal] = useState(false);
+    const [selectedRewardId, setSelectedRewardId] = useState(null);
 
     useEffect(() => {
         let unsubCustomer = () => {};
@@ -63,17 +65,27 @@ export default function RewardsPage() {
         fetchRewards();
     }, []);
 
-    const handleRedeem = async (rewardId) => {
-        if (!window.confirm("คุณต้องการใช้คะแนนเพื่อแลกของรางวัลนี้ใช่หรือไม่?")) return;
-        
+    const handleRedeemClick = (rewardId) => {
+        setSelectedRewardId(rewardId);
+        setShowModal(true);
+    };
+
+    const handleConfirmRedeem = async () => {
+        setShowModal(false);
         setIsRedeeming(true);
-        const result = await redeemReward(liffProfile.userId, rewardId);
+        const result = await redeemReward(liffProfile.userId, selectedRewardId);
         if (result.success) {
             setNotification({ show: true, title: "แลกสำเร็จ!", message: "คุณได้รับคูปองใหม่แล้ว", type: 'success' });
         } else {
             setNotification({ show: true, title: "เกิดข้อผิดพลาด", message: result.error, type: 'error' });
         }
         setIsRedeeming(false);
+        setSelectedRewardId(null);
+    };
+
+    const handleCancelRedeem = () => {
+        setShowModal(false);
+        setSelectedRewardId(null);
     };
     
     if (loading || liffLoading) return <div className="text-center p-10">กำลังโหลด...</div>
@@ -83,6 +95,14 @@ export default function RewardsPage() {
             <CustomerHeader />
             <div className="px-4 pb-4 space-y-6">
             <Notification {...notification} />
+            <ConfirmationModal
+                show={showModal}
+                title="ยืนยันการแลกของรางวัล"
+                message="คุณต้องการใช้คะแนนเพื่อแลกของรางวัลนี้ใช่หรือไม่?"
+                onConfirm={handleConfirmRedeem}
+                onCancel={handleCancelRedeem}
+                isProcessing={isRedeeming}
+            />
             <div className="bg-white p-5 rounded-lg shadow-md text-center">
                 <p className="text-gray-500">คะแนนสะสมของคุณ</p>
                 <p className="text-4xl font-bold text-purple-600">{customer?.points ?? 0}</p>
@@ -96,8 +116,8 @@ export default function RewardsPage() {
                             key={reward.id} 
                             reward={reward} 
                             userPoints={customer?.points ?? 0}
-                            onRedeem={handleRedeem}
-                            isRedeeming={isRedeeming}
+                            onRedeem={handleRedeemClick}
+                            isRedeeming={isRedeeming && selectedRewardId === reward.id}
                         />
                     ))
                 ) : (

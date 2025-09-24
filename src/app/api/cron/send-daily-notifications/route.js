@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/app/lib/firebaseAdmin';
 import { sendDailyAppointmentNotificationFlexMessage } from '@/app/actions/lineFlexActions';
-import { Timestamp } from 'firebase-admin/firestore';
+import { formatBangkokDate } from '@/lib/dateUtils';
 
 export async function GET(request) {
     try {
@@ -26,15 +26,12 @@ export async function GET(request) {
             }
         }
 
-        // Get today's date in Thailand timezone
-        const today = new Date();
-        // Convert to Thailand timezone (UTC+7)
-        const thailandTime = new Date(today.toLocaleString("en-US", {timeZone: "Asia/Bangkok"}));
-        const todayString = thailandTime.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-        console.log(`System time: ${today.toISOString()}`);
-        console.log(`Thailand time: ${thailandTime.toISOString()}`);
-        console.log(`Looking for appointments on ${todayString}`);
+    // Get today's date in Thailand timezone (standardized)
+    const today = new Date();
+    const todayString = formatBangkokDate(today, 'yyyy-MM-dd');
+    console.log(`System time: ${today.toISOString()}`);
+    console.log(`Bangkok date: ${todayString}`);
+    console.log(`Looking for appointments on ${todayString}`);
 
         // Query appointments for today
         const appointmentsSnapshot = await db.collection('appointments')

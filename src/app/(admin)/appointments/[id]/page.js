@@ -226,8 +226,13 @@ export default function AdminAppointmentDetail() {
           setLoading(false);
           return;
         }
-        const serializedData = serializeFirestoreTimestamps(snap.data());
-        setAppointment({ id: snap.id, ...serializedData });
+        const rawData = snap.data();
+        const dataWithDates = {
+          ...rawData,
+          createdAt: rawData.createdAt?.toDate ? rawData.createdAt.toDate() : (rawData.createdAt ? new Date(rawData.createdAt) : null),
+          updatedAt: rawData.updatedAt?.toDate ? rawData.updatedAt.toDate() : (rawData.updatedAt ? new Date(rawData.updatedAt) : null),
+        };
+        setAppointment({ id: snap.id, ...dataWithDates });
       } catch (err) {
         console.error('Error fetching appointment:', err);
       } finally {
@@ -241,9 +246,26 @@ export default function AdminAppointmentDetail() {
   if (loading || profileLoading) return <div className="text-center mt-20">กำลังโหลดข้อมูล...</div>;
   if (!appointment) return <div className="text-center mt-20">ไม่พบข้อมูลการนัดหมาย</div>;
 
-  const dateTime = appointment.appointmentInfo?.dateTime && typeof appointment.appointmentInfo.dateTime.toDate === 'function'
-    ? appointment.appointmentInfo.dateTime.toDate()
-    : appointment.appointmentInfo?.dateTime ? new Date(appointment.appointmentInfo.dateTime) : null;
+  // ปรับ logic ให้รองรับทุกกรณีและ field
+  const dateTime = (() => {
+    const raw =
+      appointment.appointmentInfo?.dateTime ||
+      appointment.dateTime ||
+      appointment.date ||
+      appointment.appointmentDate;
+    if (!raw) return null;
+    if (typeof raw === 'string' || typeof raw === 'number') {
+      const d = new Date(raw);
+      return isNaN(d) ? null : d;
+    }
+    if (raw instanceof Date) return raw;
+    if (raw?._seconds !== undefined && raw._nanoseconds !== undefined) {
+      // Firestore Timestamp object
+      return new Date(raw._seconds * 1000 + raw._nanoseconds / 1000000);
+    }
+    if (raw?.toDate && typeof raw.toDate === 'function') return raw.toDate();
+    return null;
+  })();
     
   const statusInfo = STATUSES[appointment.status] || { label: appointment.status, color: 'bg-gray-100 text-gray-800' };
 
@@ -343,9 +365,24 @@ export default function AdminAppointmentDetail() {
                 || appointment.beautician?.firstName
                 || appointment.appointmentInfo?.beautician
                 || '-'} />
-              <InfoRow label="วันที่/เวลา" value={dateTime instanceof Date && !isNaN(dateTime) ? format(dateTime, 'dd MMM yyyy, HH:mm', { locale: th }) : '-'} />
-              <InfoRow label="สถานที่" value={appointment.locationInfo?.name || appointment.appointmentInfo?.locationName || '-'} />
-              <InfoRow label="คิว" value={appointment.queue ?? appointment.appointmentInfo?.queue ?? appointment.queueNumber ?? '-'} />
+              <InfoRow label="วันที่/เวลา" value={
+                dateTime && !isNaN(dateTime)
+                  ? format(dateTime, 'dd MMM yyyy, HH:mm', { locale: th })
+                  : (appointment.date && appointment.time
+                      ? `${format(new Date(appointment.date), 'dd MMM yyyy', { locale: th })}, ${appointment.time}`
+                      : appointment.date
+                        ? format(new Date(appointment.date), 'dd MMM yyyy', { locale: th })
+                        : appointment.time
+                          ? appointment.time
+                          : '-')
+              } />
+              <InfoRow label="สถานที่" value={
+                appointment.locationInfo?.name
+                  || appointment.appointmentInfo?.locationName
+                  || profile.storeName
+                  || '-'
+              } />
+              <InfoRow label="คิว" value={appointment.queue ?? appointment.appointmentInfo?.queue ?? appointment.queueNumber ?? 'ไม่มีการจัดคิว'} />
             </div>
           </div>
           {((appointment.appointmentInfo && appointment.appointmentInfo.addOns && appointment.appointmentInfo.addOns.length) || (appointment.addOns && appointment.addOns.length)) && (
@@ -386,18 +423,21 @@ export default function AdminAppointmentDetail() {
                 ? `${formatPrice((appointment.appointmentInfo.addOns||[]).reduce((s,a)=>s+Number(a.price||0),0))} ${profile.currencySymbol}`
                 : '-'
           } />
+          {appointment.paymentInfo?.couponDiscount || appointment.paymentInfo?.discount ? (
+            <InfoRow label="ส่วนลดคูปอง" value={`-${formatPrice(appointment.paymentInfo.couponDiscount || appointment.paymentInfo.discount)} ${profile.currencySymbol}`} />
+          ) : null}
           <InfoRow label="ยอดรวม" value={
             appointment.paymentInfo?.totalPrice
               ? `${formatPrice(appointment.paymentInfo.totalPrice)} ${profile.currencySymbol}`
               : (
                   (appointment.paymentInfo?.originalPrice || appointment.paymentInfo?.basePrice || appointment.serviceInfo?.price || appointment.appointmentInfo?.price || appointment.price || 0)
                   + (appointment.paymentInfo?.addOnsTotal || (appointment.appointmentInfo?.addOns||[]).reduce((s,a)=>s+Number(a.price||0),0))
-                  - (appointment.paymentInfo?.discount || 0)
+                  - (appointment.paymentInfo?.couponDiscount || appointment.paymentInfo?.discount || 0)
                 )
                 ? `${formatPrice(
                     (appointment.paymentInfo?.originalPrice || appointment.paymentInfo?.basePrice || appointment.serviceInfo?.price || appointment.appointmentInfo?.price || appointment.price || 0)
                     + (appointment.paymentInfo?.addOnsTotal || (appointment.appointmentInfo?.addOns||[]).reduce((s,a)=>s+Number(a.price||0),0))
-                    - (appointment.paymentInfo?.discount || 0)
+                    - (appointment.paymentInfo?.couponDiscount || appointment.paymentInfo?.discount || 0)
                   )} ${profile.currencySymbol}`
                 : '-'
           } />

@@ -25,16 +25,17 @@ function useClickOutside(ref, handler) {
 }
 
 // Helper function to format time (คงเดิม)
+import { formatBangkokDate } from '@/lib/dateUtils';
 function formatTimeAgo(timestamp) {
-    if (!timestamp) return "";
-    const date = timestamp.toDate();
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
-    let interval = seconds / 60;
-    if (interval < 60) return Math.floor(interval) + " นาทีที่แล้ว";
-    interval = seconds / 3600;
-    if (interval < 24) return Math.floor(interval) + " ชั่วโมงที่แล้ว";
-    return date.toLocaleDateString("th-TH");
+  if (!timestamp) return "";
+  const date = timestamp.toDate();
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  let interval = seconds / 60;
+  if (interval < 60) return Math.floor(interval) + " นาทีที่แล้ว";
+  interval = seconds / 3600;
+  if (interval < 24) return Math.floor(interval) + " ชั่วโมงที่แล้ว";
+  return formatBangkokDate(date, 'dd/MM/yyyy');
 }
 
 const navLinks = [

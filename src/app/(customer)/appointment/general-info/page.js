@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useLiffContext } from '@/context/LiffProvider';
+import { useProfile } from '@/context/ProfileProvider';
 import { db } from '@/app/lib/firebase';
 import { collection, doc, getDoc, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -14,6 +15,7 @@ import { useToast } from '@/app/components/common/Toast';
 function GeneralInfoContent() {
     const searchParams = useSearchParams();
     const { profile, loading: liffLoading } = useLiffContext();
+    const { profile: shopProfile } = useProfile();
     const router = useRouter();
     const { showToast, ToastComponent } = useToast();
 
@@ -236,7 +238,7 @@ function GeneralInfoContent() {
                             </button>
 
                             {showCoupon && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 mt-3">
                                     <div className="bg-gray-50 text-primary rounded-lg p-3">
                                         <input
                                             type="radio"
@@ -263,7 +265,7 @@ function GeneralInfoContent() {
                                             <label htmlFor={coupon.id} className="text-sm">
                                                 <div className="font-medium">{coupon.name}</div>
                                                 <div className="text-gray-500">
-                                                    ลด {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `${coupon.discountValue}฿`}
+                                                    ลด {coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : `${coupon.discountValue}${shopProfile.currencySymbol || '฿'}`}
                                                 </div>
                                             </label>
                                         </div>
@@ -280,10 +282,10 @@ function GeneralInfoContent() {
                                     {(service?.duration || 0) + (service.addOnServices || [])
                                         .filter(a => selectedAddOns.includes(a.name))
                                         .reduce((sum, a) => sum + (a.duration || 0), 0)
-                                    }นาที | {finalPrice.toLocaleString()}
+                                    }นาที | {finalPrice.toLocaleString()} {shopProfile.currencySymbol || '฿'}
                                 </div>
                                 {discount > 0 && (
-                                    <div className="text-sm text-green-600">ส่วนลด -{discount.toLocaleString()}฿</div>
+                                    <div className="text-sm text-green-600">ส่วนลด -{discount.toLocaleString()} {shopProfile.currencySymbol || '฿'}</div>
                                 )}
                             </div>
                         </div>
@@ -293,8 +295,8 @@ function GeneralInfoContent() {
                 <div className="bg-white text-black rounded-2xl p-4 mb-4 shadow-sm  border border-gray-100">
                     <label className="block text-md text-center font-medium text-gray-700 mb-4">ข้อมูลลูกค้า</label>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className='flex'>
-                            <label className="w-16 block text-sm font-medium text-gray-700 mb-2">ชื่อ-สกุล</label>
+                        <div className='flex items-center'>
+                            <label className="w-24 block text-sm font-medium text-gray-700">ชื่อ-สกุล</label>
                             <input
                                 type="text"
                                 name="fullName"
@@ -305,8 +307,8 @@ function GeneralInfoContent() {
                             />
                         </div>
 
-                        <div className='flex'>
-                            <label className="w-16 block text-sm font-medium text-gray-700 mb-2">ติดต่อ</label>
+                        <div className='flex items-center'>
+                            <label className="w-24 block text-sm font-medium text-gray-700">เบอร์ติดต่อ</label>
                             <input
                                 type="tel"
                                 name="phone"
@@ -317,8 +319,8 @@ function GeneralInfoContent() {
                             />
                         </div>
 
-                        <div className='flex'>
-                            <label className="w-16 block text-sm font-medium text-gray-700 mb-2">อีเมล</label>
+                        <div className='flex items-center'>
+                            <label className="w-24 block text-sm font-medium text-gray-700">อีเมล</label>
                             <input
                                 type="email"
                                 name="email"
@@ -329,8 +331,8 @@ function GeneralInfoContent() {
                             />
                         </div>
 
-                        <div className='flex'>
-                            <label className="w-16 block text-sm font-medium text-gray-700 mb-2">เพิ่มเติม</label>
+                        <div className='flex items-center'>
+                            <label className="w-24 block text-sm font-medium text-gray-700">เพิ่มเติม</label>
                             <textarea
                                 name="note"
                                 value={formData.note}

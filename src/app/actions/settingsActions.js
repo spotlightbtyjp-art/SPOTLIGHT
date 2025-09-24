@@ -84,11 +84,12 @@ let notificationSettingsCache = null;
 let notificationCacheTimestamp = null;
 
 // Helper to make settings serializable
+import { formatBangkokDate } from '@/lib/dateUtils';
 const makeSerializable = (data) => {
     if (!data) return {};
     return JSON.parse(JSON.stringify(data, (key, value) => {
         if (value && value.hasOwnProperty('_seconds') && value.hasOwnProperty('_nanoseconds')) {
-            return new Date(value._seconds * 1000 + value._nanoseconds / 1000000).toISOString();
+            return formatBangkokDate(new Date(value._seconds * 1000 + value._nanoseconds / 1000000), 'yyyy-MM-dd HH:mm:ss');
         }
         return value;
     }));

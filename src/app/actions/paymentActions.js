@@ -182,7 +182,7 @@ export async function updatePaymentStatus(appointmentId, status, additionalData 
         // Create the update object
         const updateData = {
             'paymentInfo.status': status,
-            'paymentInfo.updatedAt': new Date().toISOString(),
+            'paymentInfo.updatedAt': require('@/lib/dateUtils').formatBangkokDate(new Date(), 'yyyy-MM-dd HH:mm:ss'),
             ...additionalData
         };
 

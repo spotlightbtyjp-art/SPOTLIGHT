@@ -77,9 +77,8 @@ export async function sendLineMessageToAllAdmins(messageText, notificationType) 
  */
 async function createMessage(details, type) {
     const { customerName, serviceName, appointmentDate, appointmentTime, totalPrice } = details;
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('th-TH', {
-        year: 'numeric', month: 'long', day: 'numeric'
-    });
+  const { formatBangkokDate } = require('@/lib/dateUtils');
+  const formattedDate = formatBangkokDate(appointmentDate, 'dd MMMM yyyy');
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
 

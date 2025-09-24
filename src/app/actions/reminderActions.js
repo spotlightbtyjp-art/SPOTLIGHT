@@ -16,7 +16,8 @@ export async function sendAppointmentReminders() {
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
     
     // Format date and time for comparison
-    const targetDate = oneHourFromNow.toISOString().split('T')[0]; // YYYY-MM-DD
+  const { formatBangkokDate } = require('@/lib/dateUtils');
+  const targetDate = formatBangkokDate(oneHourFromNow, 'yyyy-MM-dd');
     const targetHour = oneHourFromNow.getHours();
     const targetTime = `${targetHour.toString().padStart(2, '0')}:00`; // HH:00
     

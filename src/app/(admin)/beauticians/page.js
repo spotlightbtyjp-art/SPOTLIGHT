@@ -14,7 +14,7 @@ const StatusBadge = ({ status }) => {
     let colorClasses = '';
     switch (status) {
         case 'available':
-            text = 'พร้อมขับ';
+            text = 'พร้อมทำงาน';
             colorClasses = 'bg-green-100 text-green-800';
             break;
         case 'on_trip':
@@ -22,7 +22,7 @@ const StatusBadge = ({ status }) => {
             colorClasses = 'bg-blue-100 text-blue-800';
             break;
         case 'unavailable':
-            text = 'ไม่พร้อมขับ';
+            text = 'ลา';
             colorClasses = 'bg-yellow-100 text-yellow-800';
             break;
         case 'suspended':
@@ -38,9 +38,9 @@ const StatusBadge = ({ status }) => {
 
 // --- เพิ่ม: ตัวกรองสถานะ ---
 const statusFilters = [
-    { key: 'available', label: 'พร้อมขับ' },
+    { key: 'available', label: 'พร้อมทำงาน' },
     { key: 'on_trip', label: 'กำลังทำงาน' },
-    { key: 'unavailable', label: 'ไม่พร้อมขับ' },
+    { key: 'unavailable', label: 'ลา' },
     { key: 'suspended', label: 'พักงาน' },
     { key: 'all', label: 'ทั้งหมด' }
 ];
@@ -101,20 +101,20 @@ export default function BeauticiansListPage() {
     }
   };
 
-  if (loading) return <div className="text-center mt-20">กำลังโหลดข้อมูลช่างเสริมสวย...</div>;
+  if (loading) return <div className="text-center mt-20">กำลังโหลดข้อมูลพนักงาน...</div>;
 
   return (
     <div className="container mx-auto p-4 md:p-8">
         <ConfirmationModal
             show={!!beauticianToDelete}
             title="ยืนยันการลบ"
-            message={`คุณแน่ใจหรือไม่ว่าต้องการลบช่างเสริมสวย "${beauticianToDelete?.firstName} ${beauticianToDelete?.lastName}"?`}
+            message={`คุณแน่ใจหรือไม่ว่าต้องการลบพนักงาน "${beauticianToDelete?.firstName} ${beauticianToDelete?.lastName}"?`}
             onConfirm={confirmDelete}
             onCancel={() => setBeauticianToDelete(null)}
             isProcessing={isDeleting}
         />
         <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
-            <h1 className="text-2xl font-bold text-slate-800">จัดการช่างเสริมสวย</h1>
+            <h1 className="text-2xl font-bold text-slate-800">จัดการพนักงาน</h1>
             <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
                     {statusFilters.map(filter => (
@@ -128,7 +128,7 @@ export default function BeauticiansListPage() {
                     ))}
                 </div>
                 <Link href="/beauticians/add" className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-slate-700">
-                  เพิ่มช่างเสริมสวย
+                  เพิ่มพนักงาน
                 </Link>
             </div>
         </div>
@@ -137,7 +137,7 @@ export default function BeauticiansListPage() {
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ช่างเสริมสวย</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">พนักงาน</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">เบอร์โทร</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
                         <th className="relative px-6 py-3"><span className="sr-only">Actions</span></th>

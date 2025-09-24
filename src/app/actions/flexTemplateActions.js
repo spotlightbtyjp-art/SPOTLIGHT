@@ -9,11 +9,8 @@ export async function createPaymentFlexTemplate(appointmentData) {
     const serviceName = serviceInfo?.name || 'บริการของคุณ';
     const safeId = (id || appointmentId || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
-    const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-    });
+    const { formatBangkokDate } = require('@/lib/dateUtils');
+    const appointmentDate = formatBangkokDate(date, 'dd MMM yyyy');
     const { profile } = await getShopProfile();
     const currencySymbol = profile.currencySymbol || 'บาท';
     

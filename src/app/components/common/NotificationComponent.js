@@ -35,6 +35,20 @@ export const Notification = ({ show, title, message, type }) => {
 };
 
 // --- Confirmation Modal ---
+/**
+ * ตัวอย่างการใช้งานใน rewards page:
+ *
+ * import { ConfirmationModal } from '@/app/components/common/NotificationComponent';
+ *
+ * <ConfirmationModal
+ *   show={showModal}
+ *   title="ยืนยันการแลกของรางวัล"
+ *   message="คุณต้องการแลกของรางวัลนี้ใช่หรือไม่?"
+ *   onConfirm={handleConfirm}
+ *   onCancel={handleCancel}
+ *   isProcessing={isLoading}
+ * />
+ */
 export const ConfirmationModal = ({ show, title, message, onConfirm, onCancel, isProcessing }) => {
     if (!show) return null;
     return (
