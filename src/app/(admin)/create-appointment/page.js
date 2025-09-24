@@ -593,7 +593,7 @@ export default function CreateAppointmentPage() {
                                                         disabled={isDisabled || isHoliday}
                                                         className={`
                                                             w-full p-2 text-center rounded-md transition-colors
-                                                            ${isSelected ? 'bg-indigo-600 text-white shadow-md scale-95' : ''}
+                                                            ${isSelected ? 'bg-primary text-white shadow-md scale-95' : ''}
                                                             ${!isSelected && isPast ? 'bg-gray-50 text-gray-300 cursor-not-allowed' : ''}
                                                             ${!isSelected && isHoliday ? (holidayInfo?.reason === 'วันหยุดประจำสัปดาห์' ? 'weekly-holiday' : 'special-holiday') + ' cursor-not-allowed' : ''}
                                                             ${!isSelected && !isPast && !isHoliday && isDisabled ? 'bg-gray-100 text-gray-400' : ''}
