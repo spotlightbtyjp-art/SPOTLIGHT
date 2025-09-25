@@ -57,8 +57,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
         
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-800">BEAUTYTHIP</h1>
-          <p className="text-gray-500">ระบบจองบริการเสริมความงาม</p>
+          <h1 className="text-4xl font-bold text-slate-800">SPOTLIGHT</h1>
+          <p className="text-gray-500">ระบบจองบริการ</p>
         </div>
 
         {/* Customer & Beautician Section */}
