@@ -14,6 +14,7 @@ export default function AddServicePage() {
     duration: '',
     imageUrl: '',
     details: '',
+    completionNote: '',
     addOnServices: []
   });
   const [loading, setLoading] = useState(false);
@@ -99,6 +100,19 @@ export default function AddServicePage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">รายละเอียดเพิ่มเติม</label>
           <textarea name="details" value={formData.details} onChange={handleChange} rows="3" placeholder="รายละเอียดบริการ เช่น ใช้ผลิตภัณฑ์อะไร ฯลฯ" className="w-full mt-1 p-2 border rounded-md"></textarea>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">ข้อความหลังบริการเสร็จ</label>
+          <textarea 
+            name="completionNote" 
+            value={formData.completionNote} 
+            onChange={handleChange} 
+            rows="2" 
+            placeholder="ข้อความที่จะส่งให้ลูกค้าเมื่อบริการเสร็จสิ้น เช่น ขอบคุณที่ใช้บริการ แนะนำให้ดูแลผิวด้วย..." 
+            className="w-full mt-1 p-2 border rounded-md"
+            maxLength="200"
+          />
+          <div className="text-xs text-gray-500 mt-1">{formData.completionNote.length}/200 ตัวอักษร</div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">บริการเสริม</label>

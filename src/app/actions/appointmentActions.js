@@ -340,7 +340,8 @@ export async function updateAppointmentStatusByAdmin(appointmentId, newStatus, n
 
         await appointmentRef.update({
             status: newStatus,
-            updatedAt: FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp(),
+            ...(newStatus === 'completed' && note ? { completionNote: note } : {})
         });
 
         if (newStatus === 'cancelled') {
@@ -399,7 +400,8 @@ export async function updateAppointmentStatusByAdmin(appointmentId, newStatus, n
                         await sendServiceCompletedFlexMessage(appointmentData.userId, {
                             serviceName, date: appointmentDate, time: appointmentTime,
                             appointmentId, id: appointmentId,
-                            totalPointsAwarded: appointmentData._totalPointsAwarded || 0
+                            totalPointsAwarded: appointmentData._totalPointsAwarded || 0,
+                            note: note || ''
                         });
                     }
                     if (notificationSettings.customerNotifications?.reviewRequest) {

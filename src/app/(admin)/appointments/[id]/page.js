@@ -17,7 +17,7 @@ import { useProfile } from '@/context/ProfileProvider';
 // --- Modal Component for editing payment info ---
 function EditPaymentModal({ open, onClose, onSave, defaultAmount, defaultMethod, currencySymbol }) {
   const [amount, setAmount] = useState(defaultAmount || '');
-  const [method, setMethod] = useState(defaultMethod || 'เงินสด');
+  const [method, setMethod] = useState(defaultMethod || 'เงินسด');
   const [saving, setSaving] = useState(false);
   if (!open) return null;
   return (
@@ -41,6 +41,85 @@ function EditPaymentModal({ open, onClose, onSave, defaultAmount, defaultMethod,
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">ยกเลิก</button>
           <button onClick={async () => { setSaving(true); await onSave(amount, method); setSaving(false); }} className="px-4 py-2 bg-green-600 text-white rounded" disabled={saving}>{saving ? 'กำลังบันทึก...' : 'บันทึก'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Modal Component for completion note ---
+function CompletionNoteModal({ open, onClose, onSave, customerName, serviceInfo }) {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  
+  if (!open) return null;
+  
+  const loadServiceNote = () => {
+    const serviceNote = serviceInfo?.completionNote || serviceInfo?.note || '';
+    if (serviceNote) {
+      setNote(serviceNote);
+    } else {
+      alert('ไม่มีข้อความที่กำหนดไว้ในบริการนี้');
+    }
+  };
+  
+  // ตรวจสอบว่ามี completion note หรือไม่
+  const hasServiceNote = !!(serviceInfo?.completionNote && serviceInfo.completionNote.trim());
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-lg font-bold mb-4">ข้อความถึงลูกค้า</h2>
+        <p className="text-sm text-gray-600 mb-3">
+          ส่งข้อความขอบคุณหรือคำแนะนำให้ลูกค้า {customerName}
+        </p>
+        
+        {/* ปุ่มดึงข้อความจากบริการ - แสดงเฉพาะเมื่อมี completionNote */}
+        {hasServiceNote && (
+          <div className="mb-3">
+            <button
+              onClick={loadServiceNote}
+              type="button"
+              className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-md text-sm hover:bg-blue-100"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              ใช้ข้อความจากบริการ
+            </button>
+          </div>
+        )}
+        
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">ข้อความ (ไม่บังคับ)</label>
+          <textarea
+            className="w-full border rounded px-3 py-2 h-24 resize-none"
+            placeholder="เช่น ขอบคุณที่ใช้บริการ หวังว่าจะได้เจอกันอีกครั้ง..."
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            maxLength={200}
+          />
+          <div className="text-xs text-gray-500 mt-1">{note.length}/200 ตัวอักษร</div>
+        </div>
+        
+        <div className="flex justify-end gap-2">
+          <button 
+            onClick={onClose} 
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          >
+            ยกเลิก
+          </button>
+          <button 
+            onClick={async () => { 
+              setSaving(true); 
+              await onSave(note.trim()); 
+              setSaving(false); 
+            }} 
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-green-400" 
+            disabled={saving}
+          >
+            {saving ? 'กำลังส่ง...' : 'ส่งข้อความ'}
+          </button>
         </div>
       </div>
     </div>
@@ -89,11 +168,13 @@ export default function AdminAppointmentDetail() {
   const router = useRouter();
   const { id } = params;
   const [appointment, setAppointment] = useState(null);
+  const [serviceDetails, setServiceDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showEditPayment, setShowEditPayment] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCompletionNote, setShowCompletionNote] = useState(false);
   const [statusChangeInfo, setStatusChangeInfo] = useState(null);
   const [isSendingInvoice, setIsSendingInvoice] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -128,8 +209,38 @@ export default function AdminAppointmentDetail() {
 
   const handleStatusChange = (newStatus) => {
     if (newStatus === appointment.status) return;
+    
+    // ถ้าเป็นสถานะ "เสร็จสิ้น" ให้แสดง modal ใส่ note
+    if (newStatus === 'completed') {
+      setShowCompletionNote(true);
+      return;
+    }
+    
     const statusLabel = STATUS_OPTIONS.find(opt => opt.value === newStatus)?.label || newStatus;
     setStatusChangeInfo({ newStatus, statusLabel });
+  };
+
+  const handleCompletionWithNote = async (note) => {
+    setUpdating(true);
+    try {
+      const result = await updateAppointmentStatusByAdmin(appointment.id, 'completed', note);
+      if (result.success) {
+        showToast('อัพเดทสถานะเป็นเสร็จสิ้นสำเร็จ และส่งข้อความไปยังลูกค้าแล้ว', 'success');
+        setAppointment(prev => ({ 
+          ...prev, 
+          status: 'completed', 
+          updatedAt: new Date(),
+          completionNote: note // บันทึก note ที่ส่งไป
+        }));
+      } else {
+        showToast(`อัพเดทสถานะไม่สำเร็จ: ${result.error}`, 'error');
+      }
+    } catch (err) {
+      showToast(`อัพเดทสถานะไม่สำเร็จ: ${err.message}`, 'error');
+    } finally {
+      setUpdating(false);
+      setShowCompletionNote(false);
+    }
   };
 
   const confirmStatusChange = async () => {
@@ -233,6 +344,19 @@ export default function AdminAppointmentDetail() {
           updatedAt: rawData.updatedAt?.toDate ? rawData.updatedAt.toDate() : (rawData.updatedAt ? new Date(rawData.updatedAt) : null),
         };
         setAppointment({ id: snap.id, ...dataWithDates });
+        
+        // ดึงข้อมูลบริการเพิ่มเติม
+        if (rawData.serviceId) {
+          try {
+            const serviceRef = doc(db, 'services', rawData.serviceId);
+            const serviceSnap = await getDoc(serviceRef);
+            if (serviceSnap.exists()) {
+              setServiceDetails(serviceSnap.data());
+            }
+          } catch (err) {
+            console.error('Error fetching service details:', err);
+          }
+        }
       } catch (err) {
         console.error('Error fetching appointment:', err);
       } finally {
@@ -287,6 +411,13 @@ export default function AdminAppointmentDetail() {
             onCancel={() => setStatusChangeInfo(null)}
             isProcessing={updating}
         />
+        <CompletionNoteModal
+            open={showCompletionNote}
+            onClose={() => setShowCompletionNote(false)}
+            onSave={handleCompletionWithNote}
+            customerName={appointment.customerInfo?.fullName || appointment.customerInfo?.name || 'ลูกค้า'}
+            serviceInfo={serviceDetails || appointment.serviceInfo}
+        />
       <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-2xl text-black md:text-3xl font-bold">รายละเอียดนัดหมาย #{appointment.id.substring(0,6).toUpperCase()}</h1>
@@ -319,6 +450,16 @@ export default function AdminAppointmentDetail() {
               : '-'
           } />
           <InfoRow label="หมายเหตุ" value={appointment.customerInfo?.note || appointment.note || '-'} />
+          {appointment.completionNote && (
+            <InfoRow 
+              label="ข้อความที่ส่งให้ลูกค้า" 
+              value={
+                <div className="bg-green-50 border border-green-200 rounded-md p-2 text-sm">
+                  <span className="text-green-800">{appointment.completionNote}</span>
+                </div>
+              } 
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2 text-gray-500 mt-4 border-t pt-4">
             <span>เปลี่ยนสถานะ:</span>
             <div className="flex flex-wrap gap-2">
