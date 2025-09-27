@@ -144,7 +144,7 @@ export default function ServicesListPage() {
                               <p className="font-bold text-lg text-gray-800">{service.serviceName || service.name}</p>
                               <p className="text-xs text-gray-400">{service.category}</p>
                           </div>
-                          <div className="text-sm font-semibold bg-pink-500 text-white px-3 py-1 rounded">{formatPrice(service.price)} {profile.currencySymbol}</div>
+                          <div className="text-sm font-semibold bg-blue-500 text-white px-3 py-1 rounded">{formatPrice(service.price)} {profile.currencySymbol}</div>
                       </div>
                       <div className="text-sm text-gray-600 mt-2 border-t pt-2 space-y-1">
                           <p><strong>ระยะเวลา:</strong> {service.duration ?? '-'} นาที</p>

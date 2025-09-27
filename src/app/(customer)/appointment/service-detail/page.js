@@ -15,12 +15,12 @@ const AddOnCard = ({ addOn, isSelected, onToggle }) => {
     return (
         <div
             onClick={() => onToggle(addOn)}
-            className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer transition-all text-sm ${isSelected ? 'bg-pink-50 border-pink-500 ring-2 ring-pink-200' : 'bg-white'}`}
+            className={`p-3 border rounded-lg flex items-center justify-between cursor-pointer transition-all text-sm ${isSelected ? 'bg-green-50 border-green-500 ring-2 ring-green-200' : 'bg-white'}`}
         >
             <div className="flex items-center w-full">
                 <span className="font-semibold text-gray-800 flex-1">{addOn.name}</span>
                 <span className="text-xs text-gray-700 ml-2 whitespace-nowrap">{addOn.duration} นาที | {profile.currency}{addOn.price?.toLocaleString()}</span>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center ml-2 ${isSelected ? 'bg-pink-500' : 'border'}`}> 
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ml-2 ${isSelected ? 'bg-green-500' : 'border'}`}>
                     {isSelected && (
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
@@ -76,7 +76,7 @@ function ServiceDetailContent() {
             }
         });
     };
-    
+
     const totalPrice = useMemo(() => {
         const basePrice = service?.price || 0;
         const addOnsPrice = selectedAddOns.reduce((total, addOn) => total + (addOn.price || 0), 0);
@@ -98,78 +98,75 @@ function ServiceDetailContent() {
 
     return (
         <div>
-                   <CustomerHeader showBackButton={true} showActionButtons={false} />
-       
-                   <div className="px-4 pb-24">
-                       {/* รูปภาพบริการ */}
-                       <div className="relative w-full h-48 rounded-2xl overflow-hidden mb-4">
-                           <Image
-                               src={service.imageUrl || 'https://via.placeholder.com/400x200'}
-                               alt={service.serviceName}
-                               fill
-                               style={{ objectFit: 'cover' }}
-                               className="rounded-2xl"
-                               priority
-                           />
-                       </div>
-       
-                       {/* ชื่อและราคาบริการ */}
-                       <div className="mb-2">
-                           <h1 className="text-xl font-bold text-gray-800 mb-2">{service.serviceName}</h1>
-                           <div className="flex items-center justify-between">
-                               <div>
-                                   <div className="flex justify-between items-center">
-                                       <span className="text-gray-600 pr-4">ระยะเวลา</span>
-                                       <span className="font-bold text-md text-gray-800">{service.duration} นาที</span>
-                                   </div>
-       
-                                   <div className="flex justify-between items-center">
-                                       <span className="text-gray-600 pr-4">ราคา</span>
-                           <span className="font-bold text-md text-gray-800">{profile.currency}{service.price?.toLocaleString()}</span>
-                                   </div>
-                                   <div className="flex justify-between items-center mb-2">
-                                       <span className="text-gray-600 pr-4">ราคารวม</span>
-                           <span className="text-md font-bold text-gray-800">{profile.currency}{totalPrice.toLocaleString()}</span>
-                                   </div>
-                               </div>
-                               <button onClick={handleConfirm} className="w-1/3 bg-primary hover:bg-primary text-white py-4 rounded-2xl font-bold text-base transition-colors"
-                               >
-                                   ยืนยัน
-                               </button>
-                           </div></div>
-       
-                       {/* Add-on Services */}
-                       {(service.addOnServices && service.addOnServices.length > 0) && (
-                           <div className="py2">
-                               <h2 className="text-sm font-bold mb-1">รายการเสริม</h2>
-                               <div className="space-y-2">
-                                   {service.addOnServices.map((addOn, idx) => (
-                                       <AddOnCard
-                                           key={idx}
-                                           addOn={addOn}
-                                           isSelected={selectedAddOns.some(item => item.name === addOn.name)}
-                                           onToggle={toggleAddOn}
-                                       />
-                                   ))}
-                               </div>
-                           </div>
-                       )}
-       
-                       {/* รายละเอียดบริการ */}
-                       <div className="py-2">
-                           <p className="text-gray-600 text-sm mt-2" style={{ whiteSpace: 'pre-line' }}>
-                               {service.details}
-                           </p>
-                       </div>
-       
-       
-       
-       
-                   </div>
-               </div>
-           );
-       }
-       
+            <CustomerHeader showBackButton={true} showActionButtons={false} />
+
+            <div className="px-4 pb-24">
+                {/* รูปภาพบริการ */}
+                <div className="relative w-full h-48 rounded-2xl overflow-hidden mb-4">
+                    <Image
+                        src={service.imageUrl || 'https://via.placeholder.com/400x200'}
+                        alt={service.serviceName}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        className="rounded-2xl"
+                        priority
+                    />
+                </div>
+
+                {/* ชื่อและราคาบริการ */}
+                <div className="mb-2">
+                    <h1 className="text-xl font-bold text-gray-800 mb-2">{service.serviceName}</h1>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600 pr-4">ระยะเวลา</span>
+                                <span className="text-sm text-gray-800">{service.duration} นาที</span>
+                            </div>
+
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600 pr-4">ราคา</span>
+                                <span className="text-sm text-gray-800">{profile.currency}{service.price?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-gray-600 pr-4">ราคารวม</span>
+                                <span className="text-sm font-bold text-gray-800">{profile.currency}{totalPrice.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <button onClick={handleConfirm} className="w-1/3 bg-primary hover:bg-primary text-white py-3 rounded-full font-bold text-base transition-colors"
+                        >
+                            จองบริการ
+                        </button>
+                    </div></div>
+
+                {/* Add-on Services */}
+                {(service.addOnServices && service.addOnServices.length > 0) && (
+                    <div className="py2">
+                        <h2 className="text-sm font-bold mb-1">รายการเสริม</h2>
+                        <div className="space-y-2">
+                            {service.addOnServices.map((addOn, idx) => (
+                                <AddOnCard
+                                    key={idx}
+                                    addOn={addOn}
+                                    isSelected={selectedAddOns.some(item => item.name === addOn.name)}
+                                    onToggle={toggleAddOn}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* รายละเอียดบริการ */}
+                <div className="py-2">
+                    <p className="text-gray-600 text-sm mt-2" style={{ whiteSpace: 'pre-line' }}>
+                        {service.details}
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    );
+}
+
 
 export default function ServiceDetailPage() {
     return (

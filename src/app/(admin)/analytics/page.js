@@ -80,25 +80,38 @@ export default function AnalyticsPage() {
     const analyticsData = useMemo(() => {
         if (loading) return null;
 
+        // กรองนัดหมายตามช่วงวันที่
         const filteredAppointments = appointments.filter(a => {
             const date = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
             return date >= dateRange.start && date <= dateRange.end;
         });
 
-        const appointmentsByDay = filteredAppointments.reduce((acc, a) => {
+        // แยกสถานะ
+        const completedAppointments = filteredAppointments.filter(a => a.status === 'completed');
+        const cancelledAppointments = filteredAppointments.filter(a => a.status === 'cancelled');
+
+        // สร้างข้อมูลรายวันแยกสถานะ
+        const appointmentsByDay = { completed: {}, cancelled: {} };
+        completedAppointments.forEach(a => {
             const day = format(a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt), 'yyyy-MM-dd');
-            acc[day] = (acc[day] || 0) + 1;
-            return acc;
-        }, {});
+            appointmentsByDay.completed[day] = (appointmentsByDay.completed[day] || 0) + 1;
+        });
+        cancelledAppointments.forEach(a => {
+            const day = format(a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt), 'yyyy-MM-dd');
+            appointmentsByDay.cancelled[day] = (appointmentsByDay.cancelled[day] || 0) + 1;
+        });
+
         const appointmentChartData = eachDayOfInterval(dateRange).map(day => {
             const formattedDay = format(day, 'yyyy-MM-dd');
             return {
                 name: format(day, 'dd/MM'),
-                appointments: appointmentsByDay[formattedDay] || 0,
+                completed: appointmentsByDay.completed[formattedDay] || 0,
+                cancelled: appointmentsByDay.cancelled[formattedDay] || 0,
             };
         });
 
-        const paidAppointments = filteredAppointments.filter(a => a.paymentInfo && a.paymentInfo.paymentStatus === 'paid');
+        // รายได้เฉพาะที่สำเร็จ
+        const paidAppointments = completedAppointments.filter(a => a.paymentInfo && a.paymentInfo.paymentStatus === 'paid');
         const revenueByDay = paidAppointments.reduce((acc, a) => {
             const paidAt = a.paymentInfo?.paidAt?.toDate ? a.paymentInfo.paidAt.toDate() : new Date(a.paymentInfo?.paidAt);
             const day = format(paidAt, 'yyyy-MM-dd');
@@ -114,7 +127,8 @@ export default function AnalyticsPage() {
         });
         const totalRevenue = paidAppointments.reduce((sum, a) => sum + (a.paymentInfo?.totalPrice || 0), 0);
 
-        const serviceTypeData = filteredAppointments.reduce((acc, a) => {
+        // Pie chart บริการยอดนิยม (เฉพาะที่สำเร็จ)
+        const serviceTypeData = completedAppointments.reduce((acc, a) => {
             const type = a.serviceInfo?.name || 'Unknown';
             acc[type] = (acc[type] || 0) + 1;
             return acc;
@@ -124,18 +138,46 @@ export default function AnalyticsPage() {
             value: serviceTypeData[key]
         }));
 
+        // --- สรุปข้อมูลแต่ละบริการ ---
+        const serviceSummary = {};
+        filteredAppointments.forEach(a => {
+            const serviceName = a.serviceInfo?.name || a.serviceName || 'Unknown';
+            if (!serviceSummary[serviceName]) {
+                serviceSummary[serviceName] = {
+                    completed: 0,
+                    cancelled: 0,
+                    revenue: 0
+                };
+            }
+            if (a.status === 'completed') {
+                serviceSummary[serviceName].completed += 1;
+                if (a.paymentInfo && a.paymentInfo.paymentStatus === 'paid') {
+                    serviceSummary[serviceName].revenue += a.paymentInfo.totalPrice || 0;
+                }
+            }
+            if (a.status === 'cancelled') {
+                serviceSummary[serviceName].cancelled += 1;
+            }
+        });
+        // ยอดรวมทุกบริการ
+        const totalServiceRevenue = Object.values(serviceSummary).reduce((sum, s) => sum + s.revenue, 0);
+
         const averageRating = reviews.length > 0
             ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(2)
             : 'N/A';
 
         return {
             totalAppointments: filteredAppointments.length,
+            completedAppointments: completedAppointments.length,
+            cancelledAppointments: cancelledAppointments.length,
             totalRevenue,
             averageRating,
             appointmentChartData,
             revenueChartData,
             servicePieChartData,
             reviewCount: reviews.length,
+            serviceSummary,
+            totalServiceRevenue,
         };
     }, [loading, appointments, reviews, dateRange]);
     
@@ -199,45 +241,80 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                 <AnalyticsCard title="ยอดนัดหมาย" value={analyticsData.totalAppointments.toLocaleString()} subtext={`ในช่วงเวลาที่เลือก`} />
+                <AnalyticsCard title="ยอดนัดหมายทั้งหมด" value={analyticsData.totalAppointments.toLocaleString()} subtext={`ในช่วงเวลาที่เลือก`} />
+                <AnalyticsCard 
+                    title="นัดหมายสำเร็จ/ยกเลิก"
+                    value={`${analyticsData.completedAppointments.toLocaleString()} / ${analyticsData.cancelledAppointments.toLocaleString()}`}
+                    subtext={`สำเร็จ / ยกเลิก`}
+                />
                 <AnalyticsCard title="รายได้รวม" value={`${analyticsData.totalRevenue.toLocaleString()}`} subtext={profile.currencySymbol} />
                 <AnalyticsCard title="คะแนนรีวิวเฉลี่ย" value={`${analyticsData.averageRating} ★`} subtext={`จาก ${analyticsData.reviewCount} รีวิว`} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <ChartContainer title="ยอดนัดหมายรายวัน">
-                    <BarChart data={analyticsData.appointmentChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="appointments" fill="#8884d8" name="จำนวนการนัดหมาย" />
-                    </BarChart>
-                </ChartContainer>
+                {/* กราฟ 2 ช่อง */}
+                <div className="grid grid-cols-1 gap-6">
+                    <ChartContainer title="ยอดนัดหมายรายวัน (แยกสถานะ)">
+                        <BarChart data={analyticsData.appointmentChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="completed" fill="#4ade80" name="สำเร็จ" />
+                            <Bar dataKey="cancelled" fill="#f87171" name="ยกเลิก" />
+                        </BarChart>
+                    </ChartContainer>
 
-                <ChartContainer title={`รายได้รายวัน (${profile.currencySymbol})`}>
-                    <LineChart data={analyticsData.revenueChartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => value.toLocaleString()} />
-                        <Legend />
-                        <Line type="monotone" dataKey="revenue" stroke="#82ca9d" name="รายได้"/>
-                    </LineChart>
-                </ChartContainer>
+                    <ChartContainer title={`รายได้รายวัน (${profile.currencySymbol})`}>
+                        <LineChart data={analyticsData.revenueChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => value.toLocaleString()} />
+                            <Legend />
+                            <Line type="monotone" dataKey="revenue" stroke="#82ca9d" name="รายได้"/>
+                        </LineChart>
+                    </ChartContainer>
 
-                 <ChartContainer title="บริการยอดนิยม">
-                    <PieChart>
-                        <Pie data={analyticsData.servicePieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                            {analyticsData.servicePieChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <ChartContainer title="บริการยอดนิยม">
+                        <PieChart>
+                            <Pie data={analyticsData.servicePieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                                {analyticsData.servicePieChartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                        </PieChart>
+                    </ChartContainer>
+                </div>
+
+                {/* ตารางสรุปบริการ */}
+                <div className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-start h-full min-h-[300px]">
+                    <h3 className="text-xl font-bold text-gray-800 mb-6">สรุปบริการ</h3>
+                    <table className="w-full text-sm mb-6">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th className="py-2 px-2 text-left">บริการ</th>
+                                <th className="py-2 px-2 text-center">จอง</th>
+                                <th className="py-2 px-2 text-center">ยกเลิก</th>
+                                <th className="py-2 px-2 text-right">ยอดเงิน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {Object.entries(analyticsData.serviceSummary).map(([service, info]) => (
+                                <tr key={service} className="border-b">
+                                    <td className="py-2 px-2 font-medium text-slate-800">{service}</td>
+                                    <td className="py-2 px-2 text-center text-green-600 font-bold">{info.completed}</td>
+                                    <td className="py-2 px-2 text-center text-red-500 font-bold">{info.cancelled}</td>
+                                    <td className="py-2 px-2 text-right text-blue-700 font-bold">{info.revenue.toLocaleString()} {profile.currencySymbol}</td>
+                                </tr>
                             ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                    </PieChart>
-                </ChartContainer>
+                        </tbody>
+                    </table>
+                    <div className="font-bold text-lg text-blue-700 mt-2 text-center">ยอดรวมทั้งหมด: {analyticsData.totalServiceRevenue.toLocaleString()} {profile.currencySymbol}</div>
+                </div>
             </div>
         </div>
     );

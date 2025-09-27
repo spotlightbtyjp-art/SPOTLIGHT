@@ -489,7 +489,7 @@ export default function CreateAppointmentPage() {
                             required
                         >
                             <option value="">-- เลือกบริการ --</option>
-                            {services.map(s => (
+                            {services.filter(s => s.status === 'available').map(s => (
                                 <option key={s.id} value={s.id}>
                                     {s.serviceName} ({s.duration || '-'} นาที | {profile?.currencySymbol}{(s.price ?? s.basePrice ?? 0).toLocaleString()})
                                 </option>

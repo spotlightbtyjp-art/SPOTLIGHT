@@ -11,7 +11,7 @@ export default function CustomerLayout({ children }) {
         <ToastProvider>
             <LiffProvider liffId={customerLiffId}>
                 <ProfileProvider>
-                    <div className="bg-gradient-to-b from-[#f1ebe9] to-[#ffffff] min-h-screen relative bg-fixed">
+                    <div className="bg-gray-100 min-h-screen relative bg-fixed">
                         <main className='w-full max-w-md mx-auto'>
                             {children}
                         </main>

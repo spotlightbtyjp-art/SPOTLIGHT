@@ -13,8 +13,18 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lineLoading, setLineLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  const handleLineLogin = async () => {
+    setLineLoading(true);
+    // เพิ่ม delay เล็กน้อยเพื่อให้เห็น loading state
+    await new Promise(resolve => setTimeout(resolve, 500));
+    router.push('/dashboard');
+    setLineLoading(false);
+  };
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
@@ -22,18 +32,27 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // Debug: ตรวจสอบว่ามี auth object หรือไม่
+      console.log('Auth object:', auth);
+      console.log('Email:', email);
+      
       // 2. ลองทำการ Sign in ด้วยอีเมลและรหัสผ่าน
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      
+      console.log('User signed in:', user.uid);
 
       // 3. ตรวจสอบใน Firestore ว่า user ที่ login เข้ามา เป็น admin หรือไม่
       const adminDocRef = doc(db, 'admins', user.uid);
       const adminDocSnap = await getDoc(adminDocRef);
 
       if (adminDocSnap.exists()) {
+        console.log('Admin verified, redirecting...');
+        setRedirecting(true);
         // 4. ถ้าเป็น admin จริง ให้ redirect ไปหน้า dashboard
         router.push('dashboard');
       } else {
+        console.log('User is not an admin');
         // 5. ถ้าไม่ใช่ admin ให้ออกจากระบบและแสดงข้อผิดพลาด
         await signOut(auth);
         setError('คุณไม่มีสิทธิ์เข้าถึงส่วนนี้');
@@ -41,14 +60,45 @@ export default function LoginPage() {
 
     } catch (error) {
       // 6. จัดการข้อผิดพลาดในการล็อกอิน
-      console.error("Admin login failed:", error.code, error.message);
+      console.error('Complete error object:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
       let errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+      
+      // จัดการข้อผิดพลาดตาม error code
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = "ไม่พบผู้ใช้งานนี้ในระบบ";
+          break;
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          errorMessage = "อีเมลหรือรหัสผ่านไม่ถูกต้อง";
+          break;
+        case 'auth/invalid-email':
+          errorMessage = "รูปแบบอีเมลไม่ถูกต้อง";
+          break;
+        case 'auth/user-disabled':
+          errorMessage = "บัญชีผู้ใช้ถูกระงับ";
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = "มีการพยายามเข้าสู่ระบบมากเกินไป กรุณาลองใหม่ในภายหลัง";
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = "เกิดปัญหาการเชื่อมต่อ กรุณาตรวจสอบอินเทอร์เน็ต";
+          break;
+        case 'auth/internal-error':
+          errorMessage = "เกิดข้อผิดพลาดภายใน กรุณาลองใหม่อีกครั้ง";
+          break;
+        default:
+          errorMessage = `เกิดข้อผิดพลาดในการเข้าสู่ระบบ: ${error.code || 'Unknown error'}`;
       }
+      
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      if (!redirecting) {
+        setLoading(false);
+      }
     }
   };
 
@@ -65,10 +115,11 @@ export default function LoginPage() {
         <div className="p-6 border rounded-lg bg-gray-50">
           <h2 className="text-xl font-semibold text-center text-gray-700 mb-4">สำหรับลูกค้าและช่างเสริมสวย</h2>
           <button 
-            onClick={() => router.push('/dashboard')} // Changed this line
-            className="w-full flex items-center justify-center py-3 px-4 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition-colors"
+            onClick={handleLineLogin}
+            disabled={lineLoading}
+            className="w-full flex items-center justify-center py-3 px-4 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors disabled:bg-gray-400"
           >
-            เข้าสู่ระบบด้วย LINE
+            {lineLoading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE'}
           </button>
         </div>
 
@@ -110,7 +161,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-3 px-4 bg-slate-800 text-white rounded-lg font-semibold hover:bg-slate-700 transition-colors disabled:bg-gray-400"
             >
-              {loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
+              {redirecting ? 'กำลังไป Dashboard...' : loading ? 'กำลังตรวจสอบ...' : 'เข้าสู่ระบบ'}
             </button>
           </form>
         </div>
