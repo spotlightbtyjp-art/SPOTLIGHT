@@ -65,9 +65,9 @@ export default function MyCouponsPage() {
     return (
         <div>
             <CustomerHeader />
-            <div className="min-h-screen bg-white flex flex-col items-center pt-3 px-1">
+            <div className="min-h-screen flex flex-col items-center  p-4">
             {/* ปุ่มแลกคูปอง */}
-            <div className="w-full px-4 flex justify-end mb-2">
+            <div className="w-full flex justify-end mb-2">
                 <button
                     className="bg-primary hover:bg-primary-dark text-white font-semibold py-2 px-4 rounded-xl shadow text-sm transition-colors"
                     onClick={() => router.push('/rewards')}
@@ -75,11 +75,11 @@ export default function MyCouponsPage() {
                     แลกคูปอง
                 </button>
             </div>
-            <div className="w-full px-4 space-y-2">
+            <div className="w-full space-y-2">
                 {loading ? (
                     <div className="text-center text-gray-500 pt-6 text-sm">กำลังโหลดคูปอง...</div>
                 ) : coupons.length === 0 ? (
-                    <div className="text-center text-gray-500 pt-6 bg-white p-4 rounded-xl text-sm">
+                    <div className="text-center text-gray-500 pt-6 bg-white p-4 rounded-xl text-sm shadow">
                         <p className="font-semibold">ยังไม่มีคูปอง</p>
                     </div>
                 ) : (

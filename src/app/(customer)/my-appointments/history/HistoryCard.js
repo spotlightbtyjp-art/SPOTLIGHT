@@ -19,9 +19,26 @@ const HistoryCard = ({ appointment, onBookAgain }) => {
             <div className="flex">
                 <div className="flex-grow">
                     <div className="flex justify-between items-start">
-                        <div>
+                        <div className="flex-1">
                             <h2 className="font-bold text-md text-gray-800">{appointment.serviceInfo?.name}</h2>
-                            <p className="text-sm text-gray-500">
+                            
+                            {/* Multi-area service details */}
+                            {appointment.serviceInfo?.serviceType === 'multi-area' && (
+                                <div className="mt-1 space-y-0.5">
+                                    {appointment.serviceInfo?.selectedArea && (
+                                        <div className="text-xs text-primary font-medium">
+                                            📍 {appointment.serviceInfo.selectedArea.name}
+                                        </div>
+                                    )}
+                                    {appointment.serviceInfo?.selectedPackage && (
+                                        <div className="text-xs text-gray-600">
+                                            📦 {appointment.serviceInfo.selectedPackage.name} ({appointment.serviceInfo.selectedPackage.duration} นาที)
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            
+                            <p className="text-sm text-gray-500 mt-1">
                                 {format(appointmentDateTime, 'dd MMM yyyy', { locale: th })}
                             </p>
                              <p className="font-bold text-md text-gray-400">{appointment.paymentInfo?.totalPrice?.toLocaleString() || 'N/A'} {profile.currencySymbol}</p>

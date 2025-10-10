@@ -24,6 +24,8 @@ function GeneralInfoContent() {
     const date = searchParams.get('date');
     const time = searchParams.get('time');
     const beauticianId = searchParams.get('beauticianId');
+    const areaIndex = searchParams.get('areaIndex') ? parseInt(searchParams.get('areaIndex')) : null;
+    const packageIndex = searchParams.get('packageIndex') ? parseInt(searchParams.get('packageIndex')) : null;
 
     const [formData, setFormData] = useState({ fullName: "", phone: "", email: "", note: "" });
     const [service, setService] = useState(null);
@@ -78,21 +80,52 @@ function GeneralInfoContent() {
         fetchAllData();
     }, [liffLoading, profile?.userId, serviceId, beauticianId]);
 
-    const { basePrice, addOnsTotal, totalPrice, finalPrice, discount } = useMemo(() => {
-        if (!service) return { basePrice: 0, addOnsTotal: 0, totalPrice: 0, finalPrice: 0, discount: 0 };
-        const base = service.price || 0;
+    const { basePrice, addOnsTotal, totalPrice, finalPrice, discount, selectedArea, selectedPackage, totalDuration } = useMemo(() => {
+        if (!service) return { basePrice: 0, addOnsTotal: 0, totalPrice: 0, finalPrice: 0, discount: 0, selectedArea: null, selectedPackage: null, totalDuration: 0 };
+
+        let base = service.price || 0;
+        let duration = service.duration || 0;
+        let selectedAreaData = null;
+        let selectedPackageData = null;
+
+        // Handle multi-area services
+        if (service.serviceType === 'multi-area' && service.areas && service.areas.length > 0) {
+            if (areaIndex !== null && service.areas[areaIndex]) {
+                selectedAreaData = service.areas[areaIndex];
+                base = selectedAreaData.price || 0;
+                duration = selectedAreaData.duration || 0;
+
+                // Handle packages within area
+                if (packageIndex !== null && selectedAreaData.packages && selectedAreaData.packages[packageIndex]) {
+                    selectedPackageData = selectedAreaData.packages[packageIndex];
+                    base = selectedPackageData.price || 0;
+                    duration = selectedPackageData.duration || 0;
+                }
+            }
+        }
+
         const addOnsPrice = (service.addOnServices || []).filter(a => selectedAddOns.includes(a.name)).reduce((sum, a) => sum + (a.price || 0), 0);
+        const addOnsDuration = (service.addOnServices || []).filter(a => selectedAddOns.includes(a.name)).reduce((sum, a) => sum + (a.duration || 0), 0);
         const total = base + addOnsPrice;
         const selectedCoupon = availableCoupons.find(c => c.id === selectedCouponId);
-        
+
         let discountAmount = 0;
         if (selectedCoupon) {
             discountAmount = selectedCoupon.discountType === 'percentage' ? Math.round(total * (selectedCoupon.discountValue / 100)) : selectedCoupon.discountValue;
             discountAmount = Math.min(discountAmount, total);
         }
 
-        return { basePrice: base, addOnsTotal: addOnsPrice, totalPrice: total, finalPrice: Math.max(0, total - discountAmount), discount: discountAmount };
-    }, [service, selectedAddOns, selectedCouponId, availableCoupons]);
+        return {
+            basePrice: base,
+            addOnsTotal: addOnsPrice,
+            totalPrice: total,
+            finalPrice: Math.max(0, total - discountAmount),
+            discount: discountAmount,
+            selectedArea: selectedAreaData,
+            selectedPackage: selectedPackageData,
+            totalDuration: duration + addOnsDuration
+        };
+    }, [service, selectedAddOns, selectedCouponId, availableCoupons, areaIndex, packageIndex]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -117,7 +150,16 @@ function GeneralInfoContent() {
                 userInfo: { displayName: profile.displayName || '', pictureUrl: profile.pictureUrl || '' },
                 status: 'awaiting_confirmation',
                 customerInfo: formData,
-                serviceInfo: { id: serviceId, name: service.serviceName, imageUrl: service.imageUrl || '' },
+                serviceInfo: {
+                    id: serviceId,
+                    name: service.serviceName,
+                    imageUrl: service.imageUrl || '',
+                    serviceType: service.serviceType,
+                    selectedArea: selectedArea,
+                    selectedPackage: selectedPackage,
+                    areaIndex: areaIndex,
+                    packageIndex: packageIndex
+                },
                 date: date,
                 time: time,
                 serviceId: serviceId,
@@ -128,7 +170,11 @@ function GeneralInfoContent() {
                     beauticianInfo: { firstName: beautician?.firstName, lastName: beautician?.lastName },
                     dateTime: new Date(`${date}T${time}`),
                     addOns: (service.addOnServices || []).filter(a => selectedAddOns.includes(a.name)),
-                    duration: (service.duration || 0) + (service.addOnServices || []).filter(a => selectedAddOns.includes(a.name)).reduce((sum, a) => sum + (a.duration || 0), 0),
+                    duration: totalDuration,
+                    selectedArea: selectedArea,
+                    selectedPackage: selectedPackage,
+                    areaIndex: areaIndex,
+                    packageIndex: packageIndex
                 },
                 paymentInfo: {
                     basePrice,
@@ -202,7 +248,15 @@ function GeneralInfoContent() {
                             <span className="text-sm font-medium">บริการ</span>
                             <div className="text-right">
                                 <div className="text-sm font-semibold">{service?.serviceName}</div>
-                                <div className="text-sm text-gray-500">{service?.duration}นาที | {basePrice.toLocaleString()}</div>
+                                {selectedArea && (
+                                    <div className="text-sm text-gray-600">{selectedArea.name}</div>
+                                )}
+                                {selectedPackage && (
+                                    <div className="text-sm text-gray-600">{selectedPackage.name}</div>
+                                )}
+                                <div className="text-sm text-gray-500">
+                                    {service?.serviceType === 'multi-area' ? totalDuration : (service?.duration || 0)}นาที | {basePrice.toLocaleString()}
+                                </div>
                             </div>
                         </div>
 
@@ -279,10 +333,7 @@ function GeneralInfoContent() {
                             <span className="text-black font-semibold">รวม</span>
                             <div className="text-right">
                                 <div className="text-black font-bold">
-                                    {(service?.duration || 0) + (service.addOnServices || [])
-                                        .filter(a => selectedAddOns.includes(a.name))
-                                        .reduce((sum, a) => sum + (a.duration || 0), 0)
-                                    }นาที | {finalPrice.toLocaleString()} {shopProfile.currencySymbol || '฿'}
+                                    {totalDuration}นาที | {finalPrice.toLocaleString()} {shopProfile.currencySymbol || '฿'}
                                 </div>
                                 {discount > 0 && (
                                     <div className="text-sm text-green-600">ส่วนลด -{discount.toLocaleString()} {shopProfile.currencySymbol || '฿'}</div>

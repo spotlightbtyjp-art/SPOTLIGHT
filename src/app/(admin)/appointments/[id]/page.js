@@ -463,20 +463,55 @@ export default function AdminAppointmentDetail() {
           <div className="flex flex-wrap items-center gap-2 text-gray-500 mt-4 border-t pt-4">
             <span>เปลี่ยนสถานะ:</span>
             <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map(opt => (
+                {/* ปุ่มสถานะถัดไป - เด่นชัด */}
+                {appointment.status === 'awaiting_confirmation' && (
                     <button
-                        key={opt.value}
-                        onClick={() => handleStatusChange(opt.value)}
-                        disabled={updating || appointment.status === opt.value}
-                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                            appointment.status === opt.value
-                                ? 'bg-blue-600 text-white cursor-not-allowed'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        onClick={() => handleStatusChange('confirmed')}
+                        disabled={updating}
+                        className="px-4 py-2 text-sm font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
                     >
-                        {opt.label}
+                        ✓ ยืนยันการจอง
                     </button>
-                ))}
+                )}
+                {appointment.status === 'confirmed' && (
+                    <button
+                        onClick={() => handleStatusChange('in_progress')}
+                        disabled={updating}
+                        className="px-4 py-2 text-sm font-bold rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+                    >
+                        ▶ เริ่มให้บริการ
+                    </button>
+                )}
+                {appointment.status === 'in_progress' && (
+                    <button
+                        onClick={() => handleStatusChange('completed')}
+                        disabled={updating}
+                        className="px-4 py-2 text-sm font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+                    >
+                        ✓ บริการเสร็จสิ้น
+                    </button>
+                )}
+                
+                {/* ปุ่มสถานะอื่นๆ - เล็กกว่า */}
+                <div className="flex flex-wrap gap-2 ml-2 border-l pl-2">
+                    {STATUS_OPTIONS.filter(opt => {
+                        // ซ่อนปุ่มที่กำลังใช้และปุ่มสถานะถัดไป
+                        if (opt.value === appointment.status) return false;
+                        if (appointment.status === 'awaiting_confirmation' && opt.value === 'confirmed') return false;
+                        if (appointment.status === 'confirmed' && opt.value === 'in_progress') return false;
+                        if (appointment.status === 'in_progress' && opt.value === 'completed') return false;
+                        return true;
+                    }).map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => handleStatusChange(opt.value)}
+                            disabled={updating}
+                            className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
             </div>
             {updating && <span className="text-xs text-blue-500 ml-2">กำลังอัพเดท...</span>}
           </div>
@@ -495,6 +530,36 @@ export default function AdminAppointmentDetail() {
             </div>
             <div className="flex-1 space-y-1">
               <InfoRow label="บริการ" value={appointment.serviceInfo?.name || appointment.serviceName || '-'} />
+              
+              {/* Multi-area service details */}
+              {appointment.serviceInfo?.serviceType === 'multi-area' && (
+                <>
+                  {appointment.serviceInfo?.selectedArea && (
+                    <InfoRow 
+                      label="พื้นที่บริการ" 
+                      value={
+                        <span className="text-primary font-medium">
+                          {appointment.serviceInfo.selectedArea.name || '-'}
+                        </span>
+                      } 
+                    />
+                  )}
+                  {appointment.serviceInfo?.selectedPackage && (
+                    <InfoRow 
+                      label="แพ็คเกจ" 
+                      value={
+                        <div className="text-sm">
+                          <span className="font-medium">{appointment.serviceInfo.selectedPackage.name || '-'}</span>
+                          <div className="text-gray-600 text-xs mt-1">
+                            {appointment.serviceInfo.selectedPackage.duration} นาที | {formatPrice(appointment.serviceInfo.selectedPackage.price)} {profile.currencySymbol}
+                          </div>
+                        </div>
+                      } 
+                    />
+                  )}
+                </>
+              )}
+              
               <InfoRow label="ระยะเวลา" value={appointment.appointmentInfo?.duration ? `${appointment.appointmentInfo.duration} นาที` : (appointment.serviceInfo?.duration ? `${appointment.serviceInfo.duration} นาที` : '-') } />
               <InfoRow label="พนักงาน" value={
                 appointment.appointmentInfo?.beauticianName

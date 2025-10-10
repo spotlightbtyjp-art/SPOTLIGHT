@@ -46,6 +46,19 @@ const formatPrice = (v) => {
   return Number.isFinite(n) ? n.toLocaleString() : String(v);
 };
 
+const formatServicePrice = (service, profile) => {
+  if (service.serviceType === 'multi-area') {
+    const basePrice = service.basePrice || 0;
+    const minPrice = Math.min(...service.areas?.flatMap(area => area.packages?.map(pkg => pkg.price) || []) || [0]);
+    const maxPrice = Math.max(...service.areas?.flatMap(area => area.packages?.map(pkg => pkg.price) || []) || [0]);
+    if (minPrice === maxPrice) {
+      return `${formatPrice(minPrice)} ${profile.currencySymbol}`;
+    }
+    return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)} ${profile.currencySymbol}`;
+  }
+  return `${formatPrice(service.price)} ${profile.currencySymbol}`;
+};
+
 export default function ServicesListPage() {
   const [allServices, setAllServices] = useState([]);
   const [filteredServices, setFilteredServices] = useState([]);
@@ -144,10 +157,10 @@ export default function ServicesListPage() {
                               <p className="font-bold text-lg text-gray-800">{service.serviceName || service.name}</p>
                               <p className="text-xs text-gray-400">{service.category}</p>
                           </div>
-                          <div className="text-sm font-semibold bg-blue-500 text-white px-3 py-1 rounded">{formatPrice(service.price)} {profile.currencySymbol}</div>
+                          <div className="text-sm font-semibold bg-blue-500 text-white px-3 py-1 rounded">{formatServicePrice(service, profile)}</div>
                       </div>
                       <div className="text-sm text-gray-600 mt-2 border-t pt-2 space-y-1">
-                          <p><strong>ระยะเวลา:</strong> {service.duration ?? '-'} นาที</p>
+                          <p><strong>ระยะเวลา:</strong> {service.serviceType === 'multi-area' ? `${service.areas?.length || 0} พื้นที่` : `${service.duration ?? '-'} นาที`}</p>
                           <p className="truncate"><strong>รายละเอียด:</strong> {service.description || service.details || service.desc || 'ไม่มีรายละเอียด'}</p>
                           {service.addOnServices && service.addOnServices.length > 0 && (
                             <div className="mt-2">

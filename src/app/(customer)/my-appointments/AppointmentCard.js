@@ -31,8 +31,26 @@ const AppointmentCard = ({ job, onQrCodeClick, onCancelClick, onConfirmClick, is
             {/* Content Section */}
             <div className="p-4">
                 <div className="flex justify-between items-start text-sm mb-2">
-                    <span className="font-semibold text-gray-800">{job.serviceInfo?.name}</span>
-                    <span className="text-gray-700">{job.paymentInfo?.basePrice?.toLocaleString()} {profile?.currencySymbol}</span>
+                    <div className="flex-1">
+                        <span className="font-semibold text-gray-800 block">{job.serviceInfo?.name}</span>
+                        
+                        {/* Multi-area service details */}
+                        {job.serviceInfo?.serviceType === 'multi-area' && (
+                            <div className="mt-1 space-y-0.5">
+                                {job.serviceInfo?.selectedArea && (
+                                    <div className="text-xs text-primary font-medium">
+                                         {job.serviceInfo.selectedArea.name}
+                                    </div>
+                                )}
+                                {job.serviceInfo?.selectedPackage && (
+                                    <div className="text-xs text-gray-600">
+                                         {job.serviceInfo.selectedPackage.name} ({job.serviceInfo.selectedPackage.duration} นาที)
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <span className="text-gray-700 ml-2">{job.paymentInfo?.basePrice?.toLocaleString()} {profile?.currencySymbol}</span>
                 </div>
 
                 {/* Add-on Services */}

@@ -58,8 +58,12 @@ function SelectDateTimeContent() {
     const searchParams = useSearchParams();
     const serviceId = searchParams.get('serviceId');
     const addOns = searchParams.get('addOns');
+    const areaIndex = searchParams.get('areaIndex');
+    const packageIndex = searchParams.get('packageIndex');
     const { showToast, ToastComponent } = useToast();
 
+    const [service, setService] = useState(null);
+    const [selectedAddOns, setSelectedAddOns] = useState([]);
     const [date, setDate] = useState(() => {
         const now = new Date();
         return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 7, 0, 0);
@@ -81,26 +85,34 @@ function SelectDateTimeContent() {
     const [holidayDates, setHolidayDates] = useState([]);
     const [unavailableBeauticianIds, setUnavailableBeauticianIds] = useState(new Set());
 
-    // Fetch booking settings
+    // Fetch service data
     useEffect(() => {
-        const fetchBookingSettings = async () => {
+        if (!serviceId) return;
+        
+        const fetchService = async () => {
             try {
-                const docRef = doc(db, 'settings', 'booking');
+                const docRef = doc(db, 'services', serviceId);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setTimeQueues(Array.isArray(data.timeQueues) ? data.timeQueues : []);
-                    setTotalBeauticians(Number(data.totalBeauticians) || 1);
-                    setUseBeautician(!!data.useBeautician);
-                    setWeeklySchedule(data.weeklySchedule || {});
-                    setHolidayDates(Array.isArray(data.holidayDates) ? data.holidayDates : []);
+                    setService({ id: docSnap.id, ...docSnap.data() });
                 }
-            } catch (e) {
-                console.error("Error fetching booking settings:", e);
+            } catch (error) {
+                console.error("Error fetching service:", error);
             }
         };
-        fetchBookingSettings();
-    }, []);
+        fetchService();
+    }, [serviceId]);
+
+    // Process add-ons from URL params
+    useEffect(() => {
+        if (!service || !addOns) return;
+        
+        const addOnNames = addOns.split(',');
+        const selected = (service.addOnServices || []).filter(addOn => 
+            addOnNames.includes(addOn.name)
+        );
+        setSelectedAddOns(selected);
+    }, [service, addOns]);
 
     // Fetch beauticians
     useEffect(() => {
@@ -120,6 +132,26 @@ function SelectDateTimeContent() {
             setLoading(false);
         };
         fetchBeauticians();
+    }, []);
+
+    // Fetch booking settings
+    useEffect(() => {
+        const fetchBookingSettings = async () => {
+            try {
+                const bookingSettingsDoc = await getDoc(doc(db, 'settings', 'booking'));
+                if (bookingSettingsDoc.exists()) {
+                    const settings = bookingSettingsDoc.data();
+                    setTimeQueues(Array.isArray(settings.timeQueues) ? settings.timeQueues : []);
+                    setTotalBeauticians(Number(settings.totalBeauticians) || 1);
+                    setUseBeautician(!!settings.useBeautician);
+                    setWeeklySchedule(settings.weeklySchedule || {});
+                    setHolidayDates(Array.isArray(settings.holidayDates) ? settings.holidayDates : []);
+                }
+            } catch (error) {
+                console.error("Error fetching booking settings:", error);
+            }
+        };
+        fetchBookingSettings();
     }, []);
 
     // Fetch appointment counts for the selected date and update beautician availability
@@ -188,6 +220,8 @@ function SelectDateTimeContent() {
         const params = new URLSearchParams();
         if (serviceId) params.set('serviceId', serviceId);
         if (addOns) params.set('addOns', addOns);
+        if (areaIndex !== null) params.set('areaIndex', areaIndex);
+        if (packageIndex !== null) params.set('packageIndex', packageIndex);
         params.set('date', format(date, 'yyyy-MM-dd'));
         params.set('time', time);
         
@@ -230,7 +264,74 @@ function SelectDateTimeContent() {
         <div>
             <ToastComponent />
             <CustomerHeader showBackButton={true} showActionButtons={false} />
-            <div className="min-h-screen flex flex-col items-center  px-4">
+            <div className="min-h-screen flex flex-col items-center px-4">
+            
+            {/* Service Summary */}
+            {service && (
+                <div className="w-full max-w-md mx-auto mb-6">
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-200">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                <Image
+                                    src={service.imageUrl || 'https://via.placeholder.com/150'}
+                                    alt={service.serviceName}
+                                    fill
+                                    style={{ objectFit: 'cover' }}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-gray-800">{service.serviceName}</h3>
+                                {service.serviceType === 'multi-area' && areaIndex !== null && packageIndex !== null && service.areas?.[areaIndex] && (
+                                    <p className="text-sm text-gray-600">
+                                        {service.areas[areaIndex].name} - {service.areas[areaIndex].packages[packageIndex].duration} นาที
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600">ระยะเวลา:</span>
+                                <span className="font-medium">
+                                    {(() => {
+                                        let duration = 0;
+                                        if (service.serviceType === 'multi-area' && areaIndex !== null && packageIndex !== null) {
+                                            duration = service.areas[areaIndex].packages[packageIndex].duration;
+                                        } else {
+                                            duration = service.duration || 0;
+                                        }
+                                        const addOnsDuration = selectedAddOns.reduce((total, addOn) => total + (addOn.duration || 0), 0);
+                                        return duration + addOnsDuration;
+                                    })()} นาที
+                                </span>
+                            </div>
+                            
+                            {selectedAddOns.length > 0 && (
+                                <div className="text-xs text-gray-500">
+                                    รวมบริการเสริม: {selectedAddOns.map(a => a.name).join(', ')}
+                                </div>
+                            )}
+                            
+                            <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                                <span className="text-gray-800">ราคารวม:</span>
+                                <span className="text-primary">
+                                    {(() => {
+                                        let price = 0;
+                                        if (service.serviceType === 'multi-area' && areaIndex !== null && packageIndex !== null) {
+                                            price = service.areas[areaIndex].packages[packageIndex].price;
+                                        } else {
+                                            price = service.price || 0;
+                                        }
+                                        const addOnsPrice = selectedAddOns.reduce((total, addOn) => total + (addOn.price || 0), 0);
+                                        return (price + addOnsPrice).toLocaleString();
+                                    })()} บาท
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Calendar */}
             <div className="w-full bg-white/30 border border-[#A8999E] p-4 rounded-2xl max-w-md mx-auto flex flex-col items-center">
                 <div className="flex items-center justify-between w-full mb-4">

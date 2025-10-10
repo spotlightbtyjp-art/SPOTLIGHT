@@ -38,6 +38,8 @@ function ServiceDetailContent() {
     const serviceId = searchParams.get('id');
     const [service, setService] = useState(null);
     const [selectedAddOns, setSelectedAddOns] = useState([]);
+    const [selectedAreaIndex, setSelectedAreaIndex] = useState(null);
+    const [selectedPackageIndex, setSelectedPackageIndex] = useState(null);
     const [loading, setLoading] = useState(true);
     const { profile, loading: profileLoading } = useProfile();
 
@@ -78,15 +80,56 @@ function ServiceDetailContent() {
     };
 
     const totalPrice = useMemo(() => {
-        const basePrice = service?.price || 0;
+        let basePrice = 0;
+        
+        if (service?.serviceType === 'multi-area') {
+            // สำหรับ multi-area service
+            if (selectedAreaIndex !== null && selectedPackageIndex !== null && service.areas?.[selectedAreaIndex]?.packages?.[selectedPackageIndex]) {
+                const selectedPackage = service.areas[selectedAreaIndex].packages[selectedPackageIndex];
+                basePrice = selectedPackage.price;
+            }
+        } else {
+            // สำหรับ single service
+            basePrice = service?.price || 0;
+        }
+        
         const addOnsPrice = selectedAddOns.reduce((total, addOn) => total + (addOn.price || 0), 0);
         return basePrice + addOnsPrice;
-    }, [service, selectedAddOns]);
+    }, [service, selectedAddOns, selectedAreaIndex, selectedPackageIndex]);
+
+    const totalDuration = useMemo(() => {
+        let baseDuration = 0;
+        
+        if (service?.serviceType === 'multi-area') {
+            // สำหรับ multi-area service
+            if (selectedAreaIndex !== null && selectedPackageIndex !== null && service.areas?.[selectedAreaIndex]?.packages?.[selectedPackageIndex]) {
+                const selectedPackage = service.areas[selectedAreaIndex].packages[selectedPackageIndex];
+                baseDuration = selectedPackage.duration;
+            }
+        } else {
+            // สำหรับ single service
+            baseDuration = service?.duration || 0;
+        }
+        
+        const addOnsDuration = selectedAddOns.reduce((total, addOn) => total + (addOn.duration || 0), 0);
+        return baseDuration + addOnsDuration;
+    }, [service, selectedAddOns, selectedAreaIndex, selectedPackageIndex]);
 
 
     const handleConfirm = () => {
         const params = new URLSearchParams();
         params.set('serviceId', service.id);
+        
+        // สำหรับ multi-area service
+        if (service.serviceType === 'multi-area') {
+            if (selectedAreaIndex === null || selectedPackageIndex === null) {
+                alert('กรุณาเลือกพื้นที่และแพ็คเกจบริการ');
+                return;
+            }
+            params.set('areaIndex', selectedAreaIndex.toString());
+            params.set('packageIndex', selectedPackageIndex.toString());
+        }
+        
         if (selectedAddOns.length > 0) {
             params.set('addOns', selectedAddOns.map(a => a.name).join(','));
         }
@@ -101,46 +144,112 @@ function ServiceDetailContent() {
             <CustomerHeader showBackButton={true} showActionButtons={false} />
 
             <div className="px-4 pb-24">
-                {/* รูปภาพบริการ */}
-                <div className="relative w-full h-48 rounded-2xl overflow-hidden mb-4">
-                    <Image
-                        src={service.imageUrl || 'https://via.placeholder.com/400x200'}
-                        alt={service.serviceName}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        className="rounded-2xl"
-                        priority
-                    />
+                {/* รูปภาพและชื่อบริการ */}
+                <div className="flex gap-3 mb-4">
+                    <div className="relative w-1/3 aspect-square rounded-xl overflow-hidden flex-shrink-0">
+                        <Image
+                            src={service.imageUrl || 'https://via.placeholder.com/400x200'}
+                            alt={service.serviceName}
+                            fill
+                            style={{ objectFit: 'cover' }}
+                            className="rounded-xl"
+                            priority
+                        />
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center">
+                        <h1 className="text-md font-bold text-gray-800 leading-tight">{service.serviceName}</h1>
+                         {/* แสดงราคาและระยะเวลาของบริการหลักเฉพาะเมื่อมีบริการเสริม */}
+                    {service.serviceType !== 'multi-area' && (service.addOnServices && service.addOnServices.length > 0) && (
+                        <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">บริการหลัก</div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">ระยะเวลา</span>
+                                <span className="text-sm text-gray-800">{service.duration} นาที</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-gray-600">ราคา</span>
+                                <span className="text-sm text-gray-800">{profile.currency}{service.price?.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    )}
+                    </div>
                 </div>
 
                 {/* ชื่อและราคาบริการ */}
                 <div className="mb-2">
-                    <h1 className="text-xl font-bold text-gray-800 mb-2">{service.serviceName}</h1>
+                    
+                    {service.serviceType === 'multi-area' ? (
+                        <div className="mb-4">
+                            <h2 className="text-sm font-semibold mb-2 text-gray-700">เลือกพื้นที่บริการ</h2>
+                            <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+                                {service.areas?.map((area, areaIdx) => (
+                                    <button
+                                        key={areaIdx}
+                                        onClick={() => {
+                                            setSelectedAreaIndex(areaIdx);
+                                            setSelectedPackageIndex(null);
+                                        }}
+                                        className={`px-4 py-2 border rounded-full whitespace-nowrap text-sm font-medium transition-all flex-shrink-0 ${
+                                            selectedAreaIndex === areaIdx 
+                                                ? 'bg-primary text-white border-primary shadow-md' 
+                                                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {area.name}
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            {selectedAreaIndex !== null && service.areas[selectedAreaIndex]?.packages && (
+                                <div className="mb-3">
+                                    <h3 className="text-sm font-semibold mb-2 text-gray-700">เลือกแพ็คเกจ</h3>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {service.areas[selectedAreaIndex].packages.map((pkg, pkgIdx) => (
+                                            <button
+                                                key={pkgIdx}
+                                                onClick={() => setSelectedPackageIndex(pkgIdx)}
+                                                className={`px-4 py-2.5 border rounded-lg whitespace-nowrap text-sm font-medium transition-all flex-shrink-0 ${
+                                                    selectedPackageIndex === pkgIdx
+                                                        ? 'bg-primary text-white border-primary shadow-md'
+                                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                <div className="font-medium">{pkg.duration} นาที</div>
+                                                <div className="text-xs opacity-90">{pkg.price.toLocaleString()} {profile.currency}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+
+                   
+                    
                     <div className="flex items-center justify-between">
                         <div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 pr-4">ระยะเวลา</span>
-                                <span className="text-sm text-gray-800">{service.duration} นาที</span>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-600 pr-4">ราคา</span>
-                                <span className="text-sm text-gray-800">{profile.currency}{service.price?.toLocaleString()}</span>
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-gray-600 pr-4">ระยะเวลารวม</span>
+                                <span className="text-sm font-bold text-gray-800">{totalDuration} นาที</span>
                             </div>
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm font-bold text-gray-600 pr-4">ราคารวม</span>
                                 <span className="text-sm font-bold text-gray-800">{profile.currency}{totalPrice.toLocaleString()}</span>
                             </div>
                         </div>
-                        <button onClick={handleConfirm} className="w-1/3 bg-primary hover:bg-primary text-white py-3 rounded-full font-bold text-base transition-colors"
+                        <button 
+                            onClick={handleConfirm} 
+                            className="w-1/3 bg-primary hover:bg-primary text-white py-3 rounded-full font-bold text-base transition-colors"
+                            disabled={service.serviceType === 'multi-area' && (selectedAreaIndex === null || selectedPackageIndex === null)}
                         >
                             จองบริการ
                         </button>
-                    </div></div>
+                    </div>
+                </div>
 
                 {/* Add-on Services */}
                 {(service.addOnServices && service.addOnServices.length > 0) && (
-                    <div className="py2">
+                    <div className="py-2">
                         <h2 className="text-sm font-bold mb-1">รายการเสริม</h2>
                         <div className="space-y-2">
                             {service.addOnServices.map((addOn, idx) => (
@@ -156,11 +265,14 @@ function ServiceDetailContent() {
                 )}
 
                 {/* รายละเอียดบริการ */}
-                <div className="py-2">
-                    <p className="text-gray-600 text-sm mt-2" style={{ whiteSpace: 'pre-line' }}>
-                        {service.details}
-                    </p>
-                </div>
+                {service.details && (
+                    <div className="py-2 mt-4">
+                        <h2 className="text-sm font-bold mb-2">รายละเอียดบริการ</h2>
+                        <p className="text-gray-600 text-sm" style={{ whiteSpace: 'pre-line' }}>
+                            {service.details}
+                        </p>
+                    </div>
+                )}
 
             </div>
         </div>

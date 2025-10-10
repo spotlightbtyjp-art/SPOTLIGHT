@@ -32,6 +32,10 @@ export default function CreateAppointmentPage() {
     const [appointmentTime, setAppointmentTime] = useState('');
     const [useBeautician, setUseBeautician] = useState(false);
 
+    // สำหรับ multi-area services
+    const [selectedAreaIndex, setSelectedAreaIndex] = useState(null);
+    const [selectedPackageIndex, setSelectedPackageIndex] = useState(null);
+
     // State for data from Firestore
     const [services, setServices] = useState([]);
     const [beauticians, setBeauticians] = useState([]);
@@ -177,11 +181,33 @@ export default function CreateAppointmentPage() {
     
     const { basePrice, addOnsTotal, totalPrice, totalDuration } = useMemo(() => {
         if (!selectedService) return { basePrice: 0, addOnsTotal: 0, totalPrice: 0, totalDuration: 0 };
-        const base = selectedService.price || 0;
+        
+        let base = 0;
+        let duration = 0;
+        
+        if (selectedService.serviceType === 'multi-area') {
+            // สำหรับ multi-area service
+            if (selectedAreaIndex !== null && selectedPackageIndex !== null && selectedService.areas?.[selectedAreaIndex]?.packages?.[selectedPackageIndex]) {
+                const selectedPackage = selectedService.areas[selectedAreaIndex].packages[selectedPackageIndex];
+                base = selectedPackage.price;
+                duration = selectedPackage.duration;
+            }
+        } else {
+            // สำหรับ single service
+            base = selectedService.price || 0;
+            duration = selectedService.duration || 0;
+        }
+        
         const addOnsPrice = selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
-        const duration = (selectedService.duration || 0) + selectedAddOns.reduce((sum, a) => sum + (a.duration || 0), 0);
-        return { basePrice: base, addOnsTotal: addOnsPrice, totalPrice: base + addOnsPrice, totalDuration: duration };
-    }, [selectedService, selectedAddOns]);
+        const addOnsDuration = selectedAddOns.reduce((sum, a) => sum + (a.duration || 0), 0);
+        
+        return { 
+            basePrice: base, 
+            addOnsTotal: addOnsPrice, 
+            totalPrice: base + addOnsPrice, 
+            totalDuration: duration + addOnsDuration 
+        };
+    }, [selectedService, selectedAddOns, selectedAreaIndex, selectedPackageIndex]);
 
     const checkExistingCustomer = async (phone, lineUserId) => {
         if (!phone && !lineUserId) {
@@ -352,6 +378,8 @@ export default function CreateAppointmentPage() {
     const handleServiceChange = (e) => {
         setSelectedServiceId(e.target.value);
         setSelectedAddOnNames([]);
+        setSelectedAreaIndex(null);
+        setSelectedPackageIndex(null);
     };
 
     const handleAddOnToggle = (addOnName) => {
@@ -370,7 +398,25 @@ export default function CreateAppointmentPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!selectedServiceId || (useBeautician && !selectedBeauticianId) || !appointmentDate || !appointmentTime || !customerInfo.fullName || !customerInfo.phone) {
+        // ตรวจสอบการเลือกบริการ
+        if (!selectedServiceId) {
+            showToast('กรุณาเลือกบริการ', 'error');
+            return;
+        }
+
+        // ตรวจสอบการเลือก area และ package สำหรับ multi-area service
+        if (selectedService.serviceType === 'multi-area') {
+            if (selectedAreaIndex === null) {
+                showToast('กรุณาเลือกพื้นที่บริการ', 'error');
+                return;
+            }
+            if (selectedPackageIndex === null) {
+                showToast('กรุณาเลือกแพ็คเกจ', 'error');
+                return;
+            }
+        }
+
+        if (!appointmentDate || !appointmentTime || !customerInfo.fullName || !customerInfo.phone) {
             showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 'error');
             return;
         }
@@ -413,6 +459,38 @@ export default function CreateAppointmentPage() {
                 beautician = beauticians.find(b => b.id === selectedBeauticianId);
             }
 
+            // เตรียมข้อมูลบริการ
+            let serviceInfo = {
+                id: selectedService.id,
+                name: selectedService.serviceName,
+                imageUrl: selectedService.imageUrl || ''
+            };
+
+            let appointmentInfo = {
+                beauticianId: useBeautician ? beautician?.id : null,
+                employeeId: useBeautician ? beautician?.id : null,
+                beauticianInfo: useBeautician ? { firstName: beautician?.firstName, lastName: beautician?.lastName } : { firstName: 'ระบบ', lastName: 'จัดสรรช่าง' },
+                dateTime: new Date(`${appointmentDate}T${appointmentTime}`),
+                addOns: selectedAddOns,
+                duration: totalDuration,
+            };
+
+            // เพิ่มข้อมูลสำหรับ multi-area service
+            if (selectedService.serviceType === 'multi-area' && selectedAreaIndex !== null && selectedPackageIndex !== null) {
+                const selectedArea = selectedService.areas[selectedAreaIndex];
+                const selectedPackage = selectedArea.packages[selectedPackageIndex];
+                
+                serviceInfo.selectedArea = selectedArea;
+                serviceInfo.selectedPackage = selectedPackage;
+                serviceInfo.areaIndex = selectedAreaIndex;
+                serviceInfo.packageIndex = selectedPackageIndex;
+                
+                appointmentInfo.selectedArea = selectedArea;
+                appointmentInfo.selectedPackage = selectedPackage;
+                appointmentInfo.areaIndex = selectedAreaIndex;
+                appointmentInfo.packageIndex = selectedPackageIndex;
+            }
+
             const appointmentData = {
                 userId: customerResult.customerId,
                 userInfo: { displayName: customerInfo.fullName },
@@ -422,19 +500,12 @@ export default function CreateAppointmentPage() {
                     ...customerInfo,
                     customerId: customerResult.customerId
                 },
-                serviceInfo: { id: selectedService.id, name: selectedService.serviceName, imageUrl: selectedService.imageUrl || '' },
+                serviceInfo,
                 date: appointmentDate,
                 time: appointmentTime,
                 serviceId: selectedService.id,
                 beauticianId: useBeautician ? beautician?.id : null,
-                appointmentInfo: {
-                    beauticianId: useBeautician ? beautician?.id : null,
-                    employeeId: useBeautician ? beautician?.id : null,
-                    beauticianInfo: useBeautician ? { firstName: beautician?.firstName, lastName: beautician?.lastName } : { firstName: 'ระบบ', lastName: 'จัดสรรช่าง' },
-                    dateTime: new Date(`${appointmentDate}T${appointmentTime}`),
-                    addOns: selectedAddOns,
-                    duration: totalDuration,
-                },
+                appointmentInfo,
                 paymentInfo: {
                     basePrice,
                     addOnsTotal,
@@ -477,9 +548,12 @@ export default function CreateAppointmentPage() {
 
     return (
         <div className="container mx-auto p-4 md:p-8">
-            <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md">
+            <div className="max-w-7xl mx-auto bg-white p-6 rounded-lg shadow-md">
                 <h1 className="text-2xl font-bold mb-6 text-gray-800">สร้างการนัดหมายใหม่</h1>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* คอลัมน์ซ้าย: ขั้นตอน 1-2 */}
+                        <div className="lg:col-span-2 space-y-6">
                     <div className="p-4 border rounded-lg">
                         <h2 className="text-lg font-semibold mb-3">1. บริการ</h2>
                         <select
@@ -491,10 +565,62 @@ export default function CreateAppointmentPage() {
                             <option value="">-- เลือกบริการ --</option>
                             {services.filter(s => s.status === 'available').map(s => (
                                 <option key={s.id} value={s.id}>
-                                    {s.serviceName} ({s.duration || '-'} นาที | {profile?.currencySymbol}{(s.price ?? s.basePrice ?? 0).toLocaleString()})
+                                    {s.serviceName} ({s.serviceType === 'multi-area' ? `${s.areas?.length || 0} พื้นที่` : `${s.duration || '-'} นาที`} | {profile?.currencySymbol}{(s.price ?? s.basePrice ?? 0).toLocaleString()})
                                 </option>
                             ))}
                         </select>
+                        
+                        {selectedService?.serviceType === 'multi-area' && selectedService.areas && (
+                            <div className="mt-4">
+                                <h3 className="text-md font-medium mb-2">เลือกพื้นที่บริการ:</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {selectedService.areas.map((area, areaIdx) => (
+                                        <button
+                                            key={areaIdx}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedAreaIndex(areaIdx);
+                                                setSelectedPackageIndex(null);
+                                            }}
+                                            className={`p-3 border rounded-md text-left transition-colors ${
+                                                selectedAreaIndex === areaIdx 
+                                                    ? 'bg-blue-100 border-blue-500 text-blue-800' 
+                                                    : 'bg-white border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <div className="font-medium">{area.name}</div>
+                                            <div className="text-sm text-gray-600">
+                                                {area.packages?.length || 0} แพ็คเกจ
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                {selectedAreaIndex !== null && selectedService.areas[selectedAreaIndex]?.packages && (
+                                    <div className="mt-4">
+                                        <h4 className="text-md font-medium mb-2">เลือกแพ็คเกจ:</h4>
+                                        <div className="space-y-2">
+                                            {selectedService.areas[selectedAreaIndex].packages.map((pkg, pkgIdx) => (
+                                                <label key={pkgIdx} className="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-gray-50">
+                                                    <input
+                                                        type="radio"
+                                                        name="package"
+                                                        checked={selectedPackageIndex === pkgIdx}
+                                                        onChange={() => setSelectedPackageIndex(pkgIdx)}
+                                                        className="h-4 w-4 text-blue-600"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <div className="font-medium">{pkg.duration} นาที</div>
+                                                        <div className="text-sm text-gray-600">{pkg.price.toLocaleString()} {profile.currencySymbol}</div>
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
                         {selectedService?.addOnServices?.length > 0 && (
                             <div className="mt-4">
                                 <h3 className="text-md font-medium mb-2">บริการเสริม:</h3>
@@ -710,11 +836,6 @@ export default function CreateAppointmentPage() {
                                         <div className="text-center text-gray-500 py-2 bg-gray-50 rounded-md">
                                             {!appointmentDate ? 'กรุณาเลือกวันที่ก่อน' : 'กรุณาเลือกเวลาก่อน'}
                                         </div>
-                                    ) : loading ? (
-                                        <div className="text-center py-4">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                                            <p className="mt-2 text-gray-600">กำลังโหลดข้อมูลช่าง...</p>
-                                        </div>
                                     ) : beauticians.length === 0 ? (
                                         <div className="text-center text-gray-500 py-2 bg-gray-50 rounded-md">
                                             ไม่พบข้อมูลช่าง
@@ -751,8 +872,11 @@ export default function CreateAppointmentPage() {
 
                         </div>
                     </div>
-
-                    <div className="p-4 border rounded-lg">
+                        </div>
+                        
+                        {/* คอลัมน์ขวา: ขั้นตอน 3 */}
+                        <div className="lg:col-span-1">
+                    <div className="p-4 border rounded-lg  top-4">
                         <h2 className="text-lg font-semibold mb-3">3. ข้อมูลลูกค้า</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <input
@@ -873,6 +997,8 @@ export default function CreateAppointmentPage() {
                         >
                             {isSubmitting ? 'กำลังบันทึก...' : 'สร้างการนัดหมาย (รอการยืนยัน)'}
                         </button>
+                    </div>
+                        </div>
                     </div>
                 </form>
             </div>

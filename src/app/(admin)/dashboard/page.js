@@ -68,42 +68,142 @@ const AppointmentCard = ({ appointment, onCancelClick }) => {
     const statusInfo = STATUSES[appointment.status] || { label: appointment.status, color: 'bg-gray-100 text-gray-800' };
     const appointmentDate = appointment.appointmentInfo?.dateTime?.toDate();
 
+    // กำหนดสีขอบตามสถานะ
+    const borderColorClass = {
+        'awaiting_confirmation': 'border-l-yellow-500',
+        'confirmed': 'border-l-blue-500',
+        'in_progress': 'border-l-purple-500',
+        'completed': 'border-l-green-500',
+        'cancelled': 'border-l-red-500',
+    }[appointment.status] || 'border-l-gray-300';
+
     return (
-        <div className="bg-white rounded-lg shadow-sm border p-3 space-y-2 text-sm">
+        <div className={`bg-white rounded-lg shadow-sm border-l-4 ${borderColorClass} border-t border-r border-b p-4 space-y-3 text-sm hover:shadow-md transition-shadow`}>
             <div className="flex justify-between items-start">
-                <p className="font-bold text-gray-800">{appointment.customerInfo?.fullName || appointment.customerInfo?.name}</p>
-                <span className={`px-2 py-0.5 text-xs font-semibold rounded ${statusInfo.color}`}>{statusInfo.label}</span>
+                <div>
+                    <p className="font-bold text-gray-800 text-base">{appointment.customerInfo?.fullName || appointment.customerInfo?.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{appointment.customerInfo?.phone}</p>
+                </div>
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${statusInfo.color}`}>{statusInfo.label}</span>
             </div>
-            <p className="text-gray-600">
-                {appointment.serviceInfo?.name}
-                {appointment.serviceInfo?.price ? ` • ${Number(appointment.serviceInfo.price).toLocaleString()} ${profile.currencySymbol}` :
-                    appointment.appointmentInfo?.price ? ` • ${Number(appointment.appointmentInfo.price).toLocaleString()} ${profile.currencySymbol}` : ''}
-                {appointment.serviceInfo?.duration ? ` • ${appointment.serviceInfo.duration} นาที` :
-                    appointment.appointmentInfo?.duration ? ` • ${appointment.appointmentInfo.duration} นาที` : ''}
-            </p>
+
+            {/* Service Info */}
+            <div className="border-t pt-3">
+                <div className="flex items-start gap-2">
+                    <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{appointment.serviceInfo?.name}</p>
+                        
+                        {/* Multi-area service details */}
+                        {appointment.serviceInfo?.serviceType === 'multi-area' && (
+                            <div className="mt-1 space-y-1">
+                                {appointment.serviceInfo?.selectedArea && (
+                                    <div className="flex items-center gap-1 text-xs">
+                                        <span className="font-medium text-primary">{appointment.serviceInfo.selectedArea.name}</span>
+                                    </div>
+                                )}
+                                {appointment.serviceInfo?.selectedPackage && (
+                                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                                        <span>{appointment.serviceInfo.selectedPackage.duration} นาที</span>
+                                        <span className="text-gray-400">•</span>
+                                        <span className="font-medium">{appointment.serviceInfo.selectedPackage.price.toLocaleString()} {profile.currencySymbol}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {/* Single service details */}
+                        {appointment.serviceInfo?.serviceType !== 'multi-area' && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
+                                {(appointment.serviceInfo?.duration || appointment.appointmentInfo?.duration) && (
+                                    <>
+                                        <span>{appointment.serviceInfo?.duration || appointment.appointmentInfo?.duration} นาที</span>
+                                        <span className="text-gray-400">•</span>
+                                    </>
+                                )}
+                                <span className="font-medium">{(appointment.serviceInfo?.price || appointment.appointmentInfo?.price || 0).toLocaleString()} {profile.currencySymbol}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Add-ons */}
             {addOns.length > 0 && (
-                <div className="mt-1 text-xs text-gray-700 bg-gray-50 rounded p-2">
-                    <span className="font-semibold">บริการเสริม:</span>
-                    <ul className="list-disc ml-4">
+                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-blue-800 mb-2">
+                        <span>บริการเสริม</span>
+                    </div>
+                    <ul className="space-y-1">
                         {addOns.map((addon, idx) => (
-                            <li key={idx}>
-                                {addon.name || addon.title || 'ไม่มีชื่อ'}
-                                {addon.price ? ` (${Number(addon.price).toLocaleString()} ${profile.currencySymbol})` : ''}
-                                {addon.duration ? ` • ${addon.duration} นาที` : ''}
+                            <li key={idx} className="flex justify-between text-xs text-blue-900">
+                                <span className="flex items-center gap-1">
+                                    <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
+                                    {addon.name || addon.title || 'ไม่มีชื่อ'}
+                                </span>
+                                <span className="font-medium">
+                                    {addon.duration && `${addon.duration} นาที`}
+                                    {addon.duration && addon.price && ' • '}
+                                    {addon.price && `${Number(addon.price).toLocaleString()} ${profile.currencySymbol}`}
+                                </span>
                             </li>
                         ))}
                     </ul>
                 </div>
             )}
-            <div className="text-xs text-blue-700 mt-1">รวมเวลาทั้งหมด: {totalDuration ? `${totalDuration} นาที` : '-'}</div>
-            <div className="text-xs text-gray-500 border-t pt-2 mt-2">
-                <p>{appointmentDate ? format(appointmentDate, 'dd MMM yy, HH:mm', { locale: th }) : '-'}</p>
-                <p>ราคา: {(appointment.paymentInfo?.totalPrice || 0).toLocaleString()} {profile.currencySymbol}</p>
+
+            {/* Summary */}
+            <div className="border-t pt-3 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-600">📅 {appointmentDate ? format(appointmentDate, 'dd MMM yyyy, HH:mm น.', { locale: th }) : '-'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-700">รวมทั้งหมด</span>
+                    <div className="text-right">
+                        <div className="text-sm font-bold text-gray-900">{(appointment.paymentInfo?.totalPrice || 0).toLocaleString()} {profile.currencySymbol}</div>
+                        {totalDuration > 0 && (
+                            <div className="text-xs text-gray-500">{totalDuration} นาที</div>
+                        )}
+                    </div>
+                </div>
             </div>
-             <div className="flex justify-end gap-2 mt-1">
-                <button onClick={() => navigateToDetail(router, appointment.id)} className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-1 px-2 rounded">รายละเอียด</button>
-                {['awaiting_confirmation', 'confirmed', 'in_progress'].includes(appointment.status) && (
-                    <button onClick={() => onCancelClick(appointment)} className="text-xs bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-1 px-2 rounded">ยกเลิก</button>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2 border-t">
+                {/* ปุ่มเดียวที่เปลี่ยนตามสถานะ */}
+                {appointment.status === 'awaiting_confirmation' && (
+                    <button 
+                        onClick={() => navigateToDetail(router, appointment.id)} 
+                        className="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                    >
+                        ยืนยันการจอง
+                    </button>
+                )}
+                
+                {appointment.status === 'confirmed' && (
+                    <button 
+                        onClick={() => navigateToDetail(router, appointment.id)} 
+                        className="text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                    >
+                        เริ่มให้บริการ
+                    </button>
+                )}
+                
+                {appointment.status === 'in_progress' && (
+                    <button 
+                        onClick={() => navigateToDetail(router, appointment.id)} 
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                    >
+                        บริการเสร็จสิ้น
+                    </button>
+                )}
+                
+                {['completed', 'cancelled'].includes(appointment.status) && (
+                    <button 
+                        onClick={() => navigateToDetail(router, appointment.id)} 
+                        className="text-xs bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                    >
+                        ดูรายละเอียด
+                    </button>
                 )}
             </div>
         </div>
@@ -264,9 +364,24 @@ export default function AdminDashboardPage() {
                                             <div className="text-sm text-gray-500">{app.customerInfo?.phone}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                                            <p>{app.serviceInfo?.name}</p>
+                                            <p className="font-medium">{app.serviceInfo?.name}</p>
+                                            
+                                            {/* Multi-area service details */}
+                                            {app.serviceInfo?.serviceType === 'multi-area' && (
+                                                <div className="text-xs text-primary mt-1">
+                                                    {app.serviceInfo?.selectedArea && (
+                                                        <div>📍 {app.serviceInfo.selectedArea.name}</div>
+                                                    )}
+                                                    {app.serviceInfo?.selectedPackage && (
+                                                        <div className="text-gray-600">
+                                                            📦 {app.serviceInfo.selectedPackage.duration} นาที | {app.serviceInfo.selectedPackage.price.toLocaleString()} {profile.currencySymbol}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            
                                             {(app.appointmentInfo?.addOns?.length || app.addOns?.length) > 0 && (
-                                                <ul className="list-disc ml-4 text-xs text-gray-600">
+                                                <ul className="list-disc ml-4 text-xs text-gray-600 mt-1">
                                                     {(app.appointmentInfo?.addOns || app.addOns || []).map((addon, idx) => (
                                                         <li key={idx}>
                                                             {addon.name || addon.title || 'ไม่มีชื่อ'}

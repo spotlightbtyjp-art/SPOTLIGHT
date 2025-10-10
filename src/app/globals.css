@@ -2,8 +2,8 @@
 
 :root {
   --primary-light: #e8faeb;
-  --primary: #0cb80c;
-  --primary-dark: #16be06;
+  --primary: #6b5b56;
+  --primary-dark: #534541;
   --secondary: #F5F2ED;
   --accent: #FFFFFF;
   --text: #7F7679;
@@ -157,12 +157,12 @@ body {
 /* เพิ่มสไตล์สำหรับปฏิทิน */
 .weekly-holiday {
   background-color: #FEE2E2 !important; /* สีแดงอ่อนสำหรับวันหยุดประจำสัปดาห์ */
-  color: #991B1B !important;
+  color: #b91d1d !important;
 }
 
 .special-holiday {
   background-color: #FEF3C7 !important; /* สีเหลืองอ่อนสำหรับวันหยุดพิเศษ */
-  color: #92400E !important;
+  color: #ca6c13 !important;
 }
 
 .today-date {

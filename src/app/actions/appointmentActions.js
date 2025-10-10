@@ -77,15 +77,68 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
         }
         const authoritativeServiceData = serviceSnap.data();
 
+        // Calculate price and duration for multi-area services
+        let finalPrice = authoritativeServiceData.price || 0;
+        let finalDuration = authoritativeServiceData.duration || 0;
+        let selectedArea = null;
+        let selectedPackage = null;
+
+        if (authoritativeServiceData.serviceType === 'multi-area' && authoritativeServiceData.areas && authoritativeServiceData.areas.length > 0) {
+            const areaIndex = appointmentData.appointmentInfo?.areaIndex;
+            const packageIndex = appointmentData.appointmentInfo?.packageIndex;
+
+            if (areaIndex !== null && areaIndex !== undefined && authoritativeServiceData.areas[areaIndex]) {
+                selectedArea = authoritativeServiceData.areas[areaIndex];
+                finalPrice = selectedArea.price || 0;
+                finalDuration = selectedArea.duration || 0;
+
+                // Handle packages within area
+                if (packageIndex !== null && packageIndex !== undefined && selectedArea.packages && selectedArea.packages[packageIndex]) {
+                    selectedPackage = selectedArea.packages[packageIndex];
+                    finalPrice = selectedPackage.price || 0;
+                    finalDuration = selectedPackage.duration || 0;
+                }
+            }
+        }
+
+        // Add add-ons duration and price
+        const addOns = appointmentData.appointmentInfo?.addOns || [];
+        const addOnsTotal = addOns.reduce((sum, a) => sum + (a.price || 0), 0);
+        const addOnsDuration = addOns.reduce((sum, a) => sum + (a.duration || 0), 0);
+
+        finalPrice += addOnsTotal;
+        finalDuration += addOnsDuration;
+
         const finalAppointmentData = {
             ...appointmentData,
             serviceInfo: {
                 id: serviceId,
                 name: authoritativeServiceData.serviceName,
-                price: authoritativeServiceData.price,
-                duration: authoritativeServiceData.duration,
+                price: finalPrice,
+                duration: finalDuration,
                 imageUrl: authoritativeServiceData.imageUrl || '',
-                addOns: appointmentData.serviceInfo?.addOns || []
+                serviceType: authoritativeServiceData.serviceType,
+                selectedArea: selectedArea,
+                selectedPackage: selectedPackage,
+                areaIndex: appointmentData.appointmentInfo?.areaIndex,
+                packageIndex: appointmentData.appointmentInfo?.packageIndex,
+                addOns: addOns
+            },
+            appointmentInfo: {
+                ...appointmentData.appointmentInfo,
+                duration: finalDuration,
+                selectedArea: selectedArea,
+                selectedPackage: selectedPackage,
+                areaIndex: appointmentData.appointmentInfo?.areaIndex,
+                packageIndex: appointmentData.appointmentInfo?.packageIndex,
+                addOns: addOns
+            },
+            paymentInfo: {
+                ...appointmentData.paymentInfo,
+                basePrice: finalPrice - addOnsTotal,
+                addOnsTotal: addOnsTotal,
+                originalPrice: finalPrice,
+                totalPrice: appointmentData.paymentInfo?.totalPrice || finalPrice
             },
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
@@ -165,10 +218,34 @@ export async function updateAppointmentByAdmin(appointmentId, updateData) {
         const serviceData = serviceDoc.data();
 
         const selectedAddOns = (serviceData.addOnServices || []).filter(a => addOnNames.includes(a.name));
-        const basePrice = serviceData.price || 0;
+        let basePrice = serviceData.price || 0;
+        let totalDuration = serviceData.duration || 0;
+        let selectedArea = null;
+        let selectedPackage = null;
+
+        // Handle multi-area services
+        if (serviceData.serviceType === 'multi-area' && serviceData.areas && serviceData.areas.length > 0) {
+            const areaIndex = updateData.areaIndex;
+            const packageIndex = updateData.packageIndex;
+
+            if (areaIndex !== null && areaIndex !== undefined && serviceData.areas[areaIndex]) {
+                selectedArea = serviceData.areas[areaIndex];
+                basePrice = selectedArea.price || 0;
+                totalDuration = selectedArea.duration || 0;
+
+                // Handle packages within area
+                if (packageIndex !== null && packageIndex !== undefined && selectedArea.packages && selectedArea.packages[packageIndex]) {
+                    selectedPackage = selectedArea.packages[packageIndex];
+                    basePrice = selectedPackage.price || 0;
+                    totalDuration = selectedPackage.duration || 0;
+                }
+            }
+        }
+
         const addOnsTotal = selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
+        const addOnsDuration = selectedAddOns.reduce((sum, a) => sum + (a.duration || 0), 0);
         const totalPrice = basePrice + addOnsTotal;
-        const totalDuration = (serviceData.duration || 0) + selectedAddOns.reduce((sum, a) => sum + (a.duration || 0), 0);
+        totalDuration += addOnsDuration;
 
         const beauticianDoc = await db.collection('beauticians').doc(beauticianId).get();
         const beauticianData = beauticianDoc.exists ? beauticianDoc.data() : { firstName: 'N/A', lastName: '' };
@@ -182,12 +259,21 @@ export async function updateAppointmentByAdmin(appointmentId, updateData) {
             'serviceInfo.id': serviceId,
             'serviceInfo.name': serviceData.serviceName,
             'serviceInfo.imageUrl': serviceData.imageUrl || '',
+            'serviceInfo.serviceType': serviceData.serviceType,
+            'serviceInfo.selectedArea': selectedArea,
+            'serviceInfo.selectedPackage': selectedPackage,
+            'serviceInfo.areaIndex': updateData.areaIndex,
+            'serviceInfo.packageIndex': updateData.packageIndex,
             'appointmentInfo.beauticianId': beauticianId,
             'appointmentInfo.employeeId': beauticianId,
             'appointmentInfo.beauticianInfo': { firstName: beauticianData.firstName, lastName: beauticianData.lastName },
             'appointmentInfo.dateTime': Timestamp.fromDate(new Date(`${date}T${time}:00+07:00`)), // Fixed Timezone
             'appointmentInfo.addOns': selectedAddOns,
             'appointmentInfo.duration': totalDuration,
+            'appointmentInfo.selectedArea': selectedArea,
+            'appointmentInfo.selectedPackage': selectedPackage,
+            'appointmentInfo.areaIndex': updateData.areaIndex,
+            'appointmentInfo.packageIndex': updateData.packageIndex,
             'paymentInfo.basePrice': basePrice,
             'paymentInfo.addOnsTotal': addOnsTotal,
             'paymentInfo.originalPrice': totalPrice,
