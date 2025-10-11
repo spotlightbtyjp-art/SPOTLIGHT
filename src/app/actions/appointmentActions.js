@@ -800,6 +800,7 @@ export async function confirmAppointmentByUser(appointmentId, userId) {
             await createOrUpdateCalendarEvent(appointmentId, updatedDoc.data());
         }
 
+        // แจ้งเตือน Admin ว่าลูกค้ายืนยันแล้ว
         const notificationData = {
             customerName: appointmentData.customerInfo?.fullName || 'ลูกค้า',
             serviceName: appointmentData.serviceInfo?.name || 'บริการ',
@@ -808,6 +809,19 @@ export async function confirmAppointmentByUser(appointmentId, userId) {
             totalPrice: appointmentData.paymentInfo?.totalPrice ?? 0
         };
         await sendBookingNotification(notificationData, 'customerConfirmed'); 
+
+        // แจ้งเตือนลูกค้าว่าการจองได้รับการยืนยันแล้ว
+        const { success: settingsSuccess, settings: notificationSettings } = await settingsActions.getNotificationSettings();
+        if (settingsSuccess && userId && notificationSettings.customerNotifications?.appointmentConfirmed) {
+            await sendAppointmentConfirmedFlexMessage(userId, {
+                id: appointmentId,
+                serviceInfo: appointmentData.serviceInfo,
+                customerInfo: appointmentData.customerInfo,
+                date: appointmentData.date,
+                time: appointmentData.time,
+                appointmentInfo: appointmentData.appointmentInfo
+            });
+        }
 
         return { success: true };
 
