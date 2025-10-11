@@ -59,6 +59,11 @@ export default function PaymentPage() {
                     const payload = generatePayload(settings.promptPayAccount, { amount });
                     const qrCodeUrl = await QRCode.toDataURL(payload, { width: 300 });
                     setQrCodeDataUrl(qrCodeUrl);
+                } else if (settings.method === 'bankinfo') {
+                    if (!settings.bankInfoText) {
+                        throw new Error("ร้านค้ายังไม่ได้ตั้งค่าข้อมูลบัญชีธนาคาร");
+                    }
+                    // ไม่ต้องสร้าง QR Code สำหรับ bankinfo
                 } else {
                     throw new Error("รูปแบบการชำระเงินที่ร้านค้าตั้งค่าไว้ไม่ถูกต้อง");
                 }
@@ -107,7 +112,24 @@ export default function PaymentPage() {
                     </p>
                 </div>
                 
-                {qrCodeDataUrl ? (
+                {paymentSettings?.method === 'bankinfo' ? (
+                    <div className="p-6 border-2 border-blue-300 rounded-lg bg-gradient-to-br from-blue-50 to-white">
+                        <div className="flex items-center gap-2 mb-4">
+                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            <p className="text-lg font-bold text-gray-800">ข้อมูลบัญชีสำหรับโอนเงิน</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
+{paymentSettings.bankInfoText}
+                            </pre>
+                        </div>
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-gray-600">💳 กรุณาโอนเงินตามข้อมูลด้านบน</p>
+                        </div>
+                    </div>
+                ) : qrCodeDataUrl ? (
                     <div className="flex flex-col items-center p-4 border rounded-lg bg-white">
                         <img src={qrCodeDataUrl} alt="QR Code สำหรับชำระเงิน" className="w-64 h-64 object-contain" />
                         <p className="mt-4 text-gray-800 font-semibold">สแกน QR Code เพื่อชำระเงิน</p>

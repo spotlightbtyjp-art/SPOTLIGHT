@@ -78,7 +78,8 @@ export default function AdminSettingsPage() {
     const [paymentSettings, setPaymentSettings] = useState({
         method: 'promptpay',
         promptPayAccount: '',
-        qrCodeImageUrl: ''
+        qrCodeImageUrl: '',
+        bankInfoText: ''
     });
     const [calendarSettings, setCalendarSettings] = useState({
         enabled: false,
@@ -329,14 +330,24 @@ export default function AdminSettingsPage() {
                     
 
                     <SettingsCard title="การตั้งค่าการชำระเงิน">
-                       <div className="flex items-center mb-2 space-x-6">
-                            <label className="flex items-center"><input type="radio" name="paymentMethod" value="promptpay" checked={paymentSettings.method === 'promptpay'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>PromptPay</label>
-                            <label className="flex items-center"><input type="radio" name="paymentMethod" value="image" checked={paymentSettings.method === 'image'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>รูปภาพ QR</label>
+                       <div className="flex flex-col gap-2 mb-3">
+                            <label className="flex items-center">
+                                <input type="radio" name="paymentMethod" value="promptpay" checked={paymentSettings.method === 'promptpay'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>
+                                PromptPay
+                            </label>
+                            <label className="flex items-center">
+                                <input type="radio" name="paymentMethod" value="image" checked={paymentSettings.method === 'image'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>
+                                รูปภาพ QR Code
+                            </label>
+                            <label className="flex items-center">
+                                <input type="radio" name="paymentMethod" value="bankinfo" checked={paymentSettings.method === 'bankinfo'} onChange={e => setPaymentSettings({...paymentSettings, method: e.target.value})} className="mr-2"/>
+                                ข้อมูลบัญชีธนาคาร (ข้อความ)
+                            </label>
                         </div>
                         {paymentSettings.method === 'promptpay' && (
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 mb-1">เบอร์ PromptPay</label>
-                                <input type="text" value={paymentSettings.promptPayAccount || ''} onChange={e => setPaymentSettings({...paymentSettings, promptPayAccount: e.target.value})} className="border rounded-md px-2 py-1 w-full text-sm"/>
+                                <input type="text" value={paymentSettings.promptPayAccount || ''} onChange={e => setPaymentSettings({...paymentSettings, promptPayAccount: e.target.value})} className="border rounded-md px-2 py-1 w-full text-sm" placeholder="0812345678"/>
                             </div>
                         )}
                         {paymentSettings.method === 'image' && (
@@ -350,6 +361,25 @@ export default function AdminSettingsPage() {
                                     placeholder="https://example.com/image.jpg"
                                 />
                                 {paymentSettings.qrCodeImageUrl && <img src={paymentSettings.qrCodeImageUrl} alt="QR Code Preview" className="w-24 h-24 mt-2 border"/>}
+                            </div>
+                        )}
+                        {paymentSettings.method === 'bankinfo' && (
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">ข้อมูลบัญชีธนาคาร</label>
+                                <textarea 
+                                    value={paymentSettings.bankInfoText || ''} 
+                                    onChange={e => setPaymentSettings({...paymentSettings, bankInfoText: e.target.value})} 
+                                    className="border rounded-md px-2 py-1 w-full text-sm font-mono"
+                                    rows="6"
+                                    placeholder="ゆうちょ銀行 ( ธนาคารยูโจว )&#10;เลขบัญชี 10190-68664741&#10;สาขา 〇一八( 018 )&#10;OGAWA TATIKA&#10;オガワ　タティカ"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">ข้อมูลนี้จะแสดงให้ลูกค้าเห็นในหน้าชำระเงิน</p>
+                                {paymentSettings.bankInfoText && (
+                                    <div className="mt-2 p-2 bg-gray-50 border rounded text-xs">
+                                        <div className="font-medium text-gray-700 mb-1">ตัวอย่างการแสดงผล:</div>
+                                        <pre className="whitespace-pre-wrap font-mono text-gray-800">{paymentSettings.bankInfoText}</pre>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </SettingsCard>
