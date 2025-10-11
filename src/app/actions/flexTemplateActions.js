@@ -1,12 +1,29 @@
 "use server";
 import { getShopProfile } from './settingsActions';
 
+/**
+ * Helper function to format service name with multi-area package info
+ */
+function formatServiceName(serviceInfo) {
+    let serviceName = serviceInfo?.name || 'บริการของคุณ';
+    
+    // เพิ่มข้อมูล multi-area และ package ถ้ามี
+    if (serviceInfo?.selectedArea && serviceInfo?.selectedPackage) {
+        serviceName = `${serviceName}\n📍 ${serviceInfo.selectedArea.name}\n📦 ${serviceInfo.selectedPackage.duration} นาที`;
+    }
+    
+    return serviceName;
+}
+
 export async function createPaymentFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, paymentInfo, customerInfo, date, time } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const totalAmount = paymentInfo?.totalAmount || paymentInfo?.totalPrice || serviceInfo?.price || 0;
     const formattedAmount = new Intl.NumberFormat('th-TH').format(totalAmount);
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    
+    // ใช้ helper function
+    const serviceName = formatServiceName(serviceInfo);
+    
     const safeId = (id || appointmentId || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
@@ -197,7 +214,7 @@ export async function createPaymentFlexTemplate(appointmentData) {
 export async function createReviewFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, customerInfo, date, time } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = formatServiceName(serviceInfo);
     const safeId = (id || appointmentId || '').toString();
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
         day: '2-digit',
@@ -490,7 +507,7 @@ export async function createReviewThankYouFlexTemplate(reviewData) {
 export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
     const { id, serviceInfo, customerInfo, date, time, appointmentInfo } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = formatServiceName(serviceInfo);
     const beauticianName = appointmentInfo?.beauticianInfo?.firstName || appointmentInfo?.beautician || 'จะแจ้งให้ทราบ';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
         day: '2-digit',
@@ -648,7 +665,7 @@ export async function createAppointmentConfirmedFlexTemplate(appointmentData) {
 export async function createServiceCompletedFlexTemplate(appointmentData) {
     const { id, serviceInfo, customerInfo, totalPointsAwarded, note } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = formatServiceName(serviceInfo);
     
     return {
         type: "flex",
@@ -778,7 +795,7 @@ export async function createServiceCompletedFlexTemplate(appointmentData) {
 export async function createAppointmentCancelledFlexTemplate(appointmentData, reason) {
     const { id, serviceInfo, customerInfo, date, time } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = formatServiceName(serviceInfo);
     const safeId = (id || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
@@ -957,7 +974,7 @@ export async function createAppointmentCancelledFlexTemplate(appointmentData, re
 export async function createNewBookingFlexTemplate(appointmentData) {
     const { id, appointmentId, serviceInfo, serviceName: svcName, customerInfo, date, time } = appointmentData || {};
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = svcName || serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = svcName || formatServiceName(serviceInfo);
     const safeId = (id || appointmentId || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
     const appointmentDate = date ? new Date(date).toLocaleDateString('th-TH', {
@@ -1318,7 +1335,7 @@ export async function createAppointmentReminderFlexTemplate(bookingData) {
 export async function createDailyAppointmentNotificationFlexTemplate(appointmentData) {
     const { id, serviceInfo, customerInfo, date, time, appointmentInfo, status } = appointmentData;
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = formatServiceName(serviceInfo);
     const beauticianName = appointmentInfo?.beauticianInfo?.firstName || appointmentInfo?.beautician || 'จะแจ้งให้ทราบ';
     const appointmentDate = new Date(date).toLocaleDateString('th-TH', {
         day: '2-digit',
@@ -1548,7 +1565,7 @@ export async function createPaymentConfirmationFlexTemplate(appointmentData) {
     const customerName = customerInfo?.fullName || customerInfo?.firstName || 'คุณลูกค้า';
     const totalAmount = paymentInfo?.totalAmount || paymentInfo?.amountPaid || serviceInfo?.price || 0;
     const formattedAmount = new Intl.NumberFormat('th-TH').format(totalAmount);
-    const serviceName = serviceInfo?.name || 'บริการของคุณ';
+    const serviceName = formatServiceName(serviceInfo);
     const safeId = (id || appointmentId || '').toString();
     const shortId = safeId ? safeId.substring(0, 8).toUpperCase() : '—';
      const { profile } = await getShopProfile();
