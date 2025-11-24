@@ -129,6 +129,23 @@ const AppointmentCard = ({ appointment, onCancelClick }) => {
                     {appointment.serviceInfo?.serviceType === 'multi-area' && appointment.serviceInfo?.selectedArea && (
                         <p className="text-xs text-gray-500 mb-1">📍 {appointment.serviceInfo.selectedArea.name}</p>
                     )}
+                    {appointment.serviceInfo?.serviceType === 'option-based' && (
+                        <div className="text-xs text-gray-500 mb-1 space-y-0.5">
+                            {appointment.serviceInfo.selectedOptionName && (
+                                <p>🏷️ {appointment.serviceInfo.selectedOptionName}</p>
+                            )}
+                            {appointment.serviceInfo.selectedAreas?.length > 0 && (
+                                <p className="pl-4">({appointment.serviceInfo.selectedAreas.join(', ')})</p>
+                            )}
+                        </div>
+                    )}
+                    {appointment.serviceInfo?.serviceType === 'area-based-options' && appointment.serviceInfo?.selectedAreaOptions?.length > 0 && (
+                        <div className="text-xs text-gray-500 mb-1 space-y-0.5">
+                            {appointment.serviceInfo.selectedAreaOptions.map((opt, idx) => (
+                                <p key={idx}>🔸 {opt.areaName} ({opt.optionName})</p>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Icons.Clock />
                         <span>{totalDuration} นาที</span>
@@ -170,8 +187,8 @@ export default function AdminDashboardPage() {
     const router = useRouter();
 
     const [filters, setFilters] = useState({
-        startDate: format(startOfDay(new Date()), 'yyyy-MM-dd'),
-        endDate: format(endOfDay(new Date()), 'yyyy-MM-dd'),
+        startDate: format(new Date(new Date().setDate(new Date().getDate() - 30)), 'yyyy-MM-dd'),
+        endDate: format(new Date(new Date().setDate(new Date().getDate() + 30)), 'yyyy-MM-dd'),
         search: '',
     });
 
@@ -360,7 +377,22 @@ export default function AdminDashboardPage() {
                                                     </td>
                                                     <td className="py-4">
                                                         <div className="text-gray-800">{app.serviceInfo?.name}</div>
-                                                        {app.serviceInfo?.selectedArea && <div className="text-xs text-gray-400 mt-0.5">📍 {app.serviceInfo.selectedArea.name}</div>}
+                                                        {app.serviceInfo?.serviceType === 'multi-area' && app.serviceInfo?.selectedArea && (
+                                                            <div className="text-xs text-gray-400 mt-0.5">📍 {app.serviceInfo.selectedArea.name}</div>
+                                                        )}
+                                                        {app.serviceInfo?.serviceType === 'option-based' && (
+                                                            <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
+                                                                {app.serviceInfo.selectedOptionName && <div>🏷️ {app.serviceInfo.selectedOptionName}</div>}
+                                                                {app.serviceInfo.selectedAreas?.length > 0 && <div className="pl-4">({app.serviceInfo.selectedAreas.join(', ')})</div>}
+                                                            </div>
+                                                        )}
+                                                        {app.serviceInfo?.serviceType === 'area-based-options' && app.serviceInfo?.selectedAreaOptions?.length > 0 && (
+                                                            <div className="text-xs text-gray-400 mt-0.5 space-y-0.5">
+                                                                {app.serviceInfo.selectedAreaOptions.map((opt, idx) => (
+                                                                    <div key={idx}>🔸 {opt.areaName} ({opt.optionName})</div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="py-4">
                                                         <div className="flex items-center gap-2">

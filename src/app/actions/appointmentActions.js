@@ -28,10 +28,10 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
     try {
         const settingsRef = db.collection('settings').doc('booking');
         const settingsSnap = await settingsRef.get();
-        
+
         let maxSlot = 1;
         let useTechnician = false;
-        
+
         if (settingsSnap.exists) {
             const data = settingsSnap.data();
             useTechnician = !!data.useTechnician;
@@ -51,20 +51,20 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
             ['time', '==', time],
             ['status', 'in', ['pending', 'confirmed', 'awaiting_confirmation']]
         ];
-        
+
         if (useTechnician && technicianId && technicianId !== 'auto-assign') {
             queryConditions.push(['technicianId', '==', technicianId]);
-            maxSlot = 1; 
+            maxSlot = 1;
         }
-        
+
         let q = db.collection('appointments');
         queryConditions.forEach(condition => {
             q = q.where(...condition);
         });
-        
+
         const snap = await q.get();
         if (snap.size >= maxSlot) {
-            const errorMsg = useTechnician && technicianId !== 'auto-assign' 
+            const errorMsg = useTechnician && technicianId !== 'auto-assign'
                 ? 'ช่างท่านนี้ไม่ว่างในช่วงเวลาดังกล่าว'
                 : 'ช่วงเวลานี้ถูกจองเต็มแล้ว';
             return { success: false, error: errorMsg };
@@ -101,6 +101,25 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
             }
         }
 
+        // Handle area-based-options
+        if (authoritativeServiceData.serviceType === 'area-based-options' && authoritativeServiceData.areaOptions) {
+            finalPrice = 0;
+            finalDuration = 0;
+            const selectedOptions = appointmentData.appointmentInfo?.selectedAreaOptions || [];
+            if (Array.isArray(selectedOptions)) {
+                selectedOptions.forEach(selected => {
+                    const areaGroup = authoritativeServiceData.areaOptions.find(g => g.areaName === selected.areaName);
+                    if (areaGroup) {
+                        const option = areaGroup.options.find(o => o.name === selected.optionName);
+                        if (option) {
+                            finalPrice += Number(option.price) || 0;
+                            finalDuration += Number(option.duration) || 0;
+                        }
+                    }
+                });
+            }
+        }
+
         // Add add-ons duration and price
         const addOns = appointmentData.appointmentInfo?.addOns || [];
         const addOnsTotal = addOns.reduce((sum, a) => sum + (a.price || 0), 0);
@@ -124,6 +143,7 @@ export async function createAppointmentWithSlotCheck(appointmentData) {
                 selectedPackage: selectedPackage ?? null,
                 areaIndex: appointmentData.appointmentInfo?.areaIndex ?? null,
                 packageIndex: appointmentData.appointmentInfo?.packageIndex ?? null,
+                selectedAreaOptions: appointmentData.appointmentInfo?.selectedAreaOptions || [],
                 addOns: addOns
             },
             appointmentInfo: {
@@ -207,7 +227,7 @@ export async function updateAppointmentByAdmin(appointmentId, updateData) {
             .where('time', '==', time)
             .where('technicianId', '==', technicianId)
             .where('status', 'in', ['confirmed', 'awaiting_confirmation', 'in_progress']);
-        
+
         const snapshot = await q.get();
         const conflictingAppointments = snapshot.docs.filter(doc => doc.id !== appointmentId);
 
@@ -251,7 +271,7 @@ export async function updateAppointmentByAdmin(appointmentId, updateData) {
 
         const technicianDoc = await db.collection('technicians').doc(technicianId).get();
         const technicianData = technicianDoc.exists ? technicianDoc.data() : { firstName: 'N/A', lastName: '' };
-        
+
         const finalUpdateData = {
             customerInfo,
             serviceId,
@@ -261,8 +281,8 @@ export async function updateAppointmentByAdmin(appointmentId, updateData) {
             'serviceInfo.id': serviceId,
             'serviceInfo.name': serviceData.serviceName,
             'serviceInfo.imageUrl': serviceData.imageUrl || '',
-            'serviceInfo.serviceType': (typeof serviceData.serviceType === 'string' && serviceData.serviceType.trim()) 
-                ? serviceData.serviceType 
+            'serviceInfo.serviceType': (typeof serviceData.serviceType === 'string' && serviceData.serviceType.trim())
+                ? serviceData.serviceType
                 : 'single',
             'serviceInfo.selectedArea': selectedArea,
             'serviceInfo.selectedPackage': selectedPackage,
@@ -287,7 +307,7 @@ export async function updateAppointmentByAdmin(appointmentId, updateData) {
             'paymentInfo.couponName': null,
             updatedAt: FieldValue.serverTimestamp()
         };
-        
+
         await appointmentRef.update(finalUpdateData);
 
         const updatedDoc = await appointmentRef.get();
@@ -316,7 +336,7 @@ export async function confirmAppointmentAndPaymentByAdmin(appointmentId, adminId
         const appointmentDoc = await appointmentRef.get();
         if (!appointmentDoc.exists) throw new Error("ไม่พบข้อมูลการนัดหมาย");
         const appointmentData = appointmentDoc.data();
-        
+
         const wasAwaitingConfirmation = appointmentData.status === 'awaiting_confirmation';
 
         await appointmentRef.update({
@@ -330,23 +350,23 @@ export async function confirmAppointmentAndPaymentByAdmin(appointmentId, adminId
 
         if (wasAwaitingConfirmation) {
             const updatedDoc = await appointmentRef.get();
-            if(updatedDoc.exists){
+            if (updatedDoc.exists) {
                 await createOrUpdateCalendarEvent(appointmentId, updatedDoc.data());
             }
         }
-        
+
         const { success: settingsSuccess, settings: notificationSettings } = await settingsActions.getNotificationSettings();
         if (settingsSuccess && appointmentData.userId && notificationSettings.customerNotifications?.appointmentConfirmed) {
-          await sendPaymentConfirmationFlexMessage(appointmentData.userId, {
-              id: appointmentId, 
-              serviceInfo: appointmentData.serviceInfo, 
-              customerInfo: appointmentData.customerInfo,
-              paymentInfo: { amountPaid: data.amount, paymentMethod: data.method },
-              date: appointmentData.date, 
-              time: appointmentData.time, 
-              appointmentId: appointmentId, 
-              isConfirmed: wasAwaitingConfirmation
-          });
+            await sendPaymentConfirmationFlexMessage(appointmentData.userId, {
+                id: appointmentId,
+                serviceInfo: appointmentData.serviceInfo,
+                customerInfo: appointmentData.customerInfo,
+                paymentInfo: { amountPaid: data.amount, paymentMethod: data.method },
+                date: appointmentData.date,
+                time: appointmentData.time,
+                appointmentId: appointmentId,
+                isConfirmed: wasAwaitingConfirmation
+            });
         }
 
         try {
@@ -379,15 +399,15 @@ export async function cancelAppointmentByAdmin(appointmentId, reason) {
     try {
         const appointmentDoc = await appointmentRef.get();
         if (!appointmentDoc.exists) throw new Error("ไม่พบข้อมูลการนัดหมาย!");
-        
+
         const appointmentData = appointmentDoc.data();
-        
+
         await appointmentRef.update({
             status: 'cancelled',
             cancellationInfo: { cancelledBy: 'admin', reason, timestamp: FieldValue.serverTimestamp() },
             updatedAt: FieldValue.serverTimestamp()
         });
-        
+
         if (appointmentData.googleCalendarEventId) {
             await deleteCalendarEvent(appointmentData.googleCalendarEventId);
         }
@@ -441,7 +461,7 @@ export async function updateAppointmentStatusByAdmin(appointmentId, newStatus, n
         } else {
             const updatedDoc = await appointmentRef.get();
             if (updatedDoc.exists) {
-                 await createOrUpdateCalendarEvent(appointmentId, updatedDoc.data());
+                await createOrUpdateCalendarEvent(appointmentId, updatedDoc.data());
             }
         }
 
@@ -480,8 +500,8 @@ export async function updateAppointmentStatusByAdmin(appointmentId, newStatus, n
                 case 'confirmed':
                     if (notificationSettings.customerNotifications?.appointmentConfirmed) {
                         await sendAppointmentConfirmedFlexMessage(appointmentData.userId, {
-                           serviceName, date: appointmentDate, time: appointmentTime,
-                           appointmentId, id: appointmentId
+                            serviceName, date: appointmentDate, time: appointmentTime,
+                            appointmentId, id: appointmentId
                         });
                     }
                     break;
@@ -501,10 +521,10 @@ export async function updateAppointmentStatusByAdmin(appointmentId, newStatus, n
                 case 'cancelled':
                     if (notificationSettings.customerNotifications?.appointmentCancelled) {
                         await sendAppointmentCancelledFlexMessage(appointmentData.userId, {
-                           appointmentId,
-                           shortId: appointmentId.substring(0, 6).toUpperCase(),
-                           serviceName, date: appointmentDate, time: appointmentTime,
-                           reason: note || 'ไม่ได้ระบุเหตุผล', cancelledBy: 'admin'
+                            appointmentId,
+                            shortId: appointmentId.substring(0, 6).toUpperCase(),
+                            serviceName, date: appointmentDate, time: appointmentTime,
+                            reason: note || 'ไม่ได้ระบุเหตุผล', cancelledBy: 'admin'
                         });
                     }
                     break;
@@ -532,7 +552,7 @@ export async function sendReviewRequestToCustomer(appointmentId) {
         if (appointmentData.status !== 'completed') throw new Error("ไม่สามารถส่งรีวิวสำหรับงานที่ยังไม่เสร็จสิ้น");
         if (appointmentData.reviewInfo?.submitted) throw new Error("การนัดหมายนี้ได้รับการรีวิวแล้ว");
         if (!appointmentData.userId) throw new Error("ไม่พบ LINE User ID ของลูกค้า");
-        
+
         const { success: settingsSuccess, settings: notificationSettings } = await settingsActions.getNotificationSettings();
         if (settingsSuccess && notificationSettings.customerNotifications?.reviewRequest) {
             await sendReviewFlexMessage(appointmentData.userId, {
@@ -569,7 +589,7 @@ export async function updateAppointmentStatusByEmployee(appointmentId, employeeI
         };
 
         await appointmentRef.update(updateData);
-        
+
         const updatedDoc = await appointmentRef.get();
         if (updatedDoc.exists) {
             await createOrUpdateCalendarEvent(appointmentId, updatedDoc.data());
@@ -614,7 +634,7 @@ export async function cancelAppointmentByUser(appointmentId, userId) {
         const { customerName, serviceName, googleCalendarEventId, date, time } = await db.runTransaction(async (transaction) => {
             const appointmentDoc = await transaction.get(appointmentRef);
             if (!appointmentDoc.exists) throw new Error("ไม่พบข้อมูลการนัดหมาย");
-            
+
             const appointmentData = appointmentDoc.data();
             if (appointmentData.userId !== userId) throw new Error("ไม่มีสิทธิ์ยกเลิกการนัดหมายนี้");
             if (['completed', 'cancelled', 'in_progress'].includes(appointmentData.status)) throw new Error("การนัดหมายนี้ไม่สามารถยกเลิกได้แล้ว");
@@ -624,8 +644,8 @@ export async function cancelAppointmentByUser(appointmentId, userId) {
                 cancellationInfo: { cancelledBy: 'customer', reason: 'Cancelled by customer.', timestamp: FieldValue.serverTimestamp() },
                 updatedAt: FieldValue.serverTimestamp()
             });
-            return { 
-                customerName: appointmentData.customerInfo.fullName, 
+            return {
+                customerName: appointmentData.customerInfo.fullName,
                 serviceName: appointmentData.serviceInfo.name,
                 googleCalendarEventId: appointmentData.googleCalendarEventId || null,
                 date: appointmentData.date,
@@ -636,7 +656,7 @@ export async function cancelAppointmentByUser(appointmentId, userId) {
         if (googleCalendarEventId) {
             await deleteCalendarEvent(googleCalendarEventId);
         }
-        
+
         // For user-initiated actions, we still send them a confirmation.
         // But we check settings before notifying admin.
         await sendAppointmentCancelledFlexMessage(userId, {
@@ -648,10 +668,10 @@ export async function cancelAppointmentByUser(appointmentId, userId) {
             reason: 'ยกเลิกโดยลูกค้า',
             cancelledBy: 'customer'
         });
-        
+
         const adminMessage = `🚫 การนัดหมายถูกยกเลิกโดยลูกค้า\n\n*ลูกค้า:* ${customerName}\n*บริการ:* ${serviceName}\n*ID:* ${appointmentId.substring(0, 6).toUpperCase()}`;
         await sendTelegramMessageToAdmin(adminMessage);
-        
+
         return { success: true };
     } catch (error) {
         console.error("Error cancelling appointment by user:", error);
@@ -675,7 +695,7 @@ export async function sendInvoiceToCustomer(appointmentId) {
         });
 
         const { success: settingsSuccess, settings: notificationSettings } = await settingsActions.getNotificationSettings();
-        if(settingsSuccess && notificationSettings.customerNotifications?.paymentInvoice){
+        if (settingsSuccess && notificationSettings.customerNotifications?.paymentInvoice) {
             await sendPaymentFlexMessage(appointmentData.userId, {
                 id: appointmentId,
                 userId: appointmentData.userId,
@@ -686,7 +706,7 @@ export async function sendInvoiceToCustomer(appointmentId) {
                 time: appointmentData.time
             });
         }
- 
+
         return { success: true };
     } catch (error) {
         console.error("Error sending invoice:", error);
@@ -724,7 +744,7 @@ export async function findAppointmentsByPhone(phoneNumber) {
 
         const q = db.collection('appointments')
             .where('customerInfo.phone', '==', phoneNumber)
-            .where('date', '>=', todayStr) 
+            .where('date', '>=', todayStr)
             .where('status', 'in', ['confirmed', 'awaiting_confirmation'])
             .orderBy('date', 'asc')
             .orderBy('time', 'asc');
@@ -737,7 +757,7 @@ export async function findAppointmentsByPhone(phoneNumber) {
             id: doc.id,
             ...doc.data()
         }));
-        
+
         return { success: true, appointments: JSON.parse(JSON.stringify(appointments)) };
     } catch (error) {
         console.error("Error finding appointments by phone:", error);
@@ -798,7 +818,7 @@ export async function confirmAppointmentByUser(appointmentId, userId) {
             status: 'confirmed',
             updatedAt: FieldValue.serverTimestamp(),
         });
-        
+
         const updatedDoc = await appointmentRef.get();
         if (updatedDoc.exists) {
             await createOrUpdateCalendarEvent(appointmentId, updatedDoc.data());
@@ -812,7 +832,7 @@ export async function confirmAppointmentByUser(appointmentId, userId) {
             appointmentTime: appointmentData.time,
             totalPrice: appointmentData.paymentInfo?.totalPrice ?? 0
         };
-        await sendBookingNotification(notificationData, 'customerConfirmed'); 
+        await sendBookingNotification(notificationData, 'customerConfirmed');
 
         // แจ้งเตือนลูกค้าว่าการจองได้รับการยืนยันแล้ว
         const { success: settingsSuccess, settings: notificationSettings } = await settingsActions.getNotificationSettings();

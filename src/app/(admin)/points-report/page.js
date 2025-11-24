@@ -21,7 +21,7 @@ export default function PointsReportPage() {
         const fetchReportData = async () => {
             try {
                 setLoading(true);
-                
+
                 const reviewsQuery = query(
                     collection(db, 'reviews'),
                     where('pointsAwarded', '>', 0),
@@ -92,20 +92,20 @@ export default function PointsReportPage() {
     return (
         <div className="container mx-auto p-6">
             <h1 className="text-3xl font-bold mb-6 text-gray-800">รายงานระบบพ้อยต์</h1>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-blue-500 text-white p-6 rounded-lg shadow-md">
                     <h3 className="text-lg font-semibold mb-2">พ้อยต์ที่แจกออกไป</h3>
                     <p className="text-3xl font-bold">{reportData.totalPointsAwarded.toLocaleString()}</p>
                     <p className="text-sm opacity-80">จากการรีวิวล่าสุด</p>
                 </div>
-                
+
                 <div className="bg-green-500 text-white p-6 rounded-lg shadow-md">
                     <h3 className="text-lg font-semibold mb-2">พ้อยต์ที่ถูกใช้</h3>
                     <p className="text-3xl font-bold">{reportData.totalPointsRedeemed.toLocaleString()}</p>
                     <p className="text-sm opacity-80">จากการแลกรางวัล</p>
                 </div>
-                
+
                 <div className="bg-purple-500 text-white p-6 rounded-lg shadow-md">
                     <h3 className="text-lg font-semibold mb-2">ลูกค้าทั้งหมด</h3>
                     <p className="text-3xl font-bold">{reportData.topCustomers.length}</p>
@@ -195,8 +195,8 @@ export default function PointsReportPage() {
                         )}
                     </div>
                     <div className="mt-4">
-                        <a 
-                            href="/admin/settings" 
+                        <a
+                            href="/admin/settings"
                             className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
                         >
                             แก้ไขการตั้งค่า

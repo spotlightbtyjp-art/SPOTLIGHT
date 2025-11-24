@@ -45,7 +45,11 @@ export default function EditServicePage() {
             completionNote: data.completionNote || '',
             addOnServices: (data.addOnServices || []).map(a => ({ ...a, price: a.price?.toString() || '', duration: a.duration?.toString() || '' })),
             selectableAreas: (data.selectableAreas || []).map(name => ({ name })),
-            serviceOptions: (data.serviceOptions || []).map(opt => ({ name: opt.name || '', price: opt.price?.toString() || '', duration: opt.duration?.toString() || '' }))
+            serviceOptions: (data.serviceOptions || []).map(opt => ({ name: opt.name || '', price: opt.price?.toString() || '', duration: opt.duration?.toString() || '' })),
+            areaOptions: (data.areaOptions || []).map(g => ({
+              areaName: g.areaName || '',
+              options: (g.options || []).map(o => ({ name: o.name || '', price: o.price?.toString() || '', duration: o.duration?.toString() || '' }))
+            }))
           });
         } else {
           showToast("ไม่พบข้อมูลบริการนี้", "error");
@@ -70,18 +74,41 @@ export default function EditServicePage() {
   const handleAddAddOn = () => setFormData(prev => ({ ...prev, addOnServices: [...prev.addOnServices, { name: '', price: '', duration: '' }] }));
   const handleRemoveAddOn = (idx) => setFormData(prev => ({ ...prev, addOnServices: prev.addOnServices.filter((_, i) => i !== idx) }));
 
+  // Option-Based Handlers
   const handleAddSelectableArea = () => setFormData(prev => ({ ...prev, selectableAreas: [...prev.selectableAreas, { name: '' }] }));
   const handleRemoveSelectableArea = (idx) => setFormData(prev => ({ ...prev, selectableAreas: prev.selectableAreas.filter((_, i) => i !== idx) }));
   const handleSelectableAreaChange = (idx, value) => {
     const list = [...formData.selectableAreas]; list[idx].name = value;
     setFormData(prev => ({ ...prev, selectableAreas: list }));
   };
-
   const handleAddServiceOption = () => setFormData(prev => ({ ...prev, serviceOptions: [...prev.serviceOptions, { name: '', duration: '', price: '' }] }));
   const handleRemoveServiceOption = (idx) => setFormData(prev => ({ ...prev, serviceOptions: prev.serviceOptions.filter((_, i) => i !== idx) }));
   const handleServiceOptionChange = (idx, field, value) => {
     const list = [...formData.serviceOptions]; list[idx][field] = value;
     setFormData(prev => ({ ...prev, serviceOptions: list }));
+  };
+
+  // Area-Based-Options Handlers
+  const handleAddAreaGroup = () => setFormData(prev => ({ ...prev, areaOptions: [...prev.areaOptions, { areaName: '', options: [{ name: '', price: '', duration: '' }] }] }));
+  const handleRemoveAreaGroup = (idx) => setFormData(prev => ({ ...prev, areaOptions: prev.areaOptions.filter((_, i) => i !== idx) }));
+  const handleAreaNameChange = (idx, val) => {
+    const list = [...formData.areaOptions]; list[idx].areaName = val;
+    setFormData(prev => ({ ...prev, areaOptions: list }));
+  };
+  const handleAddOptionToArea = (areaIdx) => {
+    const list = [...formData.areaOptions];
+    list[areaIdx].options.push({ name: '', price: '', duration: '' });
+    setFormData(prev => ({ ...prev, areaOptions: list }));
+  };
+  const handleRemoveOptionFromArea = (areaIdx, optIdx) => {
+    const list = [...formData.areaOptions];
+    list[areaIdx].options = list[areaIdx].options.filter((_, i) => i !== optIdx);
+    setFormData(prev => ({ ...prev, areaOptions: list }));
+  };
+  const handleOptionInAreaChange = (areaIdx, optIdx, field, val) => {
+    const list = [...formData.areaOptions];
+    list[areaIdx].options[optIdx][field] = val;
+    setFormData(prev => ({ ...prev, areaOptions: list }));
   };
 
   const handleSubmit = async (e) => {
@@ -93,6 +120,9 @@ export default function EditServicePage() {
     }
     if (serviceType === 'option-based' && (!formData.serviceOptions.length || !formData.selectableAreas.length)) {
       return showToast("กรุณากรอกพื้นที่และตัวเลือกอย่างน้อย 1 รายการ", "error");
+    }
+    if (serviceType === 'area-based-options' && !formData.areaOptions.length) {
+      return showToast("กรุณาเพิ่มพื้นที่และตัวเลือกอย่างน้อย 1 รายการ", "error");
     }
 
     setLoading(true);
@@ -112,11 +142,28 @@ export default function EditServicePage() {
         dataToSave.duration = Number(formData.duration) || 0;
         dataToSave.selectableAreas = [];
         dataToSave.serviceOptions = [];
-      } else {
+        dataToSave.areaOptions = [];
+      } else if (serviceType === 'option-based') {
         dataToSave.selectableAreas = formData.selectableAreas.map(a => a.name);
         dataToSave.serviceOptions = formData.serviceOptions.map(opt => ({ name: opt.name, price: Number(opt.price) || 0, duration: Number(opt.duration) || 0 }));
         dataToSave.price = Math.min(...dataToSave.serviceOptions.map(o => o.price));
         dataToSave.duration = Math.min(...dataToSave.serviceOptions.map(o => o.duration));
+        dataToSave.areaOptions = [];
+      } else if (serviceType === 'area-based-options') {
+        dataToSave.areaOptions = formData.areaOptions.map(g => ({
+          areaName: g.areaName,
+          options: g.options.map(o => ({ name: o.name, price: Number(o.price) || 0, duration: Number(o.duration) || 0 }))
+        }));
+        const allOptions = dataToSave.areaOptions.flatMap(g => g.options);
+        if (allOptions.length > 0) {
+          dataToSave.price = Math.min(...allOptions.map(o => o.price));
+          dataToSave.duration = Math.min(...allOptions.map(o => o.duration));
+        } else {
+          dataToSave.price = 0;
+          dataToSave.duration = 0;
+        }
+        dataToSave.selectableAreas = [];
+        dataToSave.serviceOptions = [];
       }
 
       await updateDoc(doc(db, 'services', id), dataToSave);
@@ -154,7 +201,8 @@ export default function EditServicePage() {
                 <label className="block text-sm font-medium text-gray-700">ประเภทบริการ</label>
                 <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white">
                   <option value="single">บริการเดี่ยว (ราคาคงที่)</option>
-                  <option value="option-based">บริการแบบเลือกพื้นที่ + ตัวเลือก</option>
+                  <option value="option-based">บริการแบบเลือกพื้นที่ + ตัวเลือกเหมือนกัน</option>
+                  <option value="area-based-options">บริการแบบพื้นที่ + ตัวเลือกแยกตามพื้นที่</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -173,7 +221,7 @@ export default function EditServicePage() {
               </select>
             </div>
 
-            {serviceType === 'single' ? (
+            {serviceType === 'single' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -188,7 +236,9 @@ export default function EditServicePage() {
                   <input type="number" name="duration" value={formData.duration} onChange={handleChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="60" />
                 </div>
               </div>
-            ) : (
+            )}
+
+            {serviceType === 'option-based' && (
               <div className="space-y-8 bg-gray-50 rounded-xl p-6 border border-gray-200">
                 {/* Selectable Areas */}
                 <div>
@@ -221,6 +271,48 @@ export default function EditServicePage() {
                     <Icons.Plus /> เพิ่มตัวเลือก
                   </button>
                 </div>
+              </div>
+            )}
+
+            {serviceType === 'area-based-options' && (
+              <div className="space-y-6">
+                {formData.areaOptions.map((areaGroup, areaIdx) => (
+                  <div key={areaIdx} className="bg-gray-50 rounded-xl p-6 border border-gray-200 relative">
+                    <button type="button" onClick={() => handleRemoveAreaGroup(areaIdx)} className="absolute top-4 right-4 text-red-500 hover:bg-red-100 p-1.5 rounded-lg"><Icons.Trash /></button>
+
+                    <div className="mb-4 pr-10">
+                      <label className="block text-sm font-bold text-gray-900 mb-2">ชื่อพื้นที่ (Area Name)</label>
+                      <input
+                        type="text"
+                        value={areaGroup.areaName}
+                        onChange={(e) => handleAreaNameChange(areaIdx, e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                        placeholder="เช่น แขน, ขา, หน้าท้อง"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">ตัวเลือกสำหรับพื้นที่นี้ (Options)</label>
+                      <div className="space-y-2">
+                        {areaGroup.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex flex-wrap items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <input type="text" value={opt.name} onChange={(e) => handleOptionInAreaChange(areaIdx, optIdx, 'name', e.target.value)} className="flex-1 min-w-[100px] px-2 py-1.5 border border-gray-200 rounded text-sm" placeholder="ชื่อตัวเลือก" />
+                            <input type="number" value={opt.duration} onChange={(e) => handleOptionInAreaChange(areaIdx, optIdx, 'duration', e.target.value)} className="w-20 px-2 py-1.5 border border-gray-200 rounded text-sm" placeholder="นาที" />
+                            <input type="number" value={opt.price} onChange={(e) => handleOptionInAreaChange(areaIdx, optIdx, 'price', e.target.value)} className="w-24 px-2 py-1.5 border border-gray-200 rounded text-sm" placeholder="ราคา" />
+                            <button type="button" onClick={() => handleRemoveOptionFromArea(areaIdx, optIdx)} className="text-red-400 hover:text-red-600 p-1"><Icons.Trash /></button>
+                          </div>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => handleAddOptionToArea(areaIdx)} className="mt-2 text-sm text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1">
+                        <Icons.Plus /> เพิ่มตัวเลือก
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button type="button" onClick={handleAddAreaGroup} className="w-full py-3 border-2 border-dashed border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 font-medium transition-colors flex items-center justify-center gap-2">
+                  <Icons.Plus /> เพิ่มพื้นที่ใหม่
+                </button>
               </div>
             )}
           </div>

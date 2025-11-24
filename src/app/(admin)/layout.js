@@ -24,17 +24,17 @@ function AdminLayoutContent({ children }) {
 
   useEffect(() => {
     let mounted = true;
-    
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (!mounted) return;
-      
+
       if (user) {
         try {
           const adminDocRef = doc(db, 'admins', user.uid);
           const adminDocSnap = await getDoc(adminDocRef);
-          
+
           if (!mounted) return;
-          
+
           if (adminDocSnap.exists()) {
             setIsAuthorized(true);
           } else {
@@ -54,7 +54,7 @@ function AdminLayoutContent({ children }) {
           router.push('/');
         }
       }
-      
+
       if (mounted) {
         setLoading(false);
       }
@@ -62,74 +62,74 @@ function AdminLayoutContent({ children }) {
 
     const notifQuery = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
     const unsubscribeNotifs = onSnapshot(notifQuery, (querySnapshot) => {
-        if (!mounted) return;
-        const notifsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setNotifications(notifsData);
-        const unread = notifsData.filter(n => !n.isRead).length;
-        setUnreadCount(unread);
+      if (!mounted) return;
+      const notifsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setNotifications(notifsData);
+      const unread = notifsData.filter(n => !n.isRead).length;
+      setUnreadCount(unread);
     });
 
     return () => {
-        mounted = false;
-        unsubscribeAuth();
-        unsubscribeNotifs();
+      mounted = false;
+      unsubscribeAuth();
+      unsubscribeNotifs();
     };
   }, [router]);
-  
+
   const handleMarkAsRead = async () => {
-      if (unreadCount > 0) {
-          const result = await markAllNotificationsAsRead();
-          if(!result.success) showToast("เกิดข้อผิดพลาดในการอัปเดต", "error");
-      }
+    if (unreadCount > 0) {
+      const result = await markAllNotificationsAsRead();
+      if (!result.success) showToast("เกิดข้อผิดพลาดในการอัปเดต", "error");
+    }
   };
-  
+
   const handleClearAllClick = () => {
-      if (notifications.length > 0) {
-          setShowClearConfirm(true);
-      } else {
-          showToast("ไม่มีการแจ้งเตือนให้ลบ", "info");
-      }
+    if (notifications.length > 0) {
+      setShowClearConfirm(true);
+    } else {
+      showToast("ไม่มีการแจ้งเตือนให้ลบ", "info");
+    }
   };
 
   const handleClearAll = async () => {
-      const result = await clearAllNotifications();
-      if(result.success){
-        showToast("ลบการแจ้งเตือนทั้งหมดแล้ว", "success");
-      } else {
-        showToast("เกิดข้อผิดพลาดในการลบ", "error");
-      }
-      setShowClearConfirm(false);
+    const result = await clearAllNotifications();
+    if (result.success) {
+      showToast("ลบการแจ้งเตือนทั้งหมดแล้ว", "success");
+    } else {
+      showToast("เกิดข้อผิดพลาดในการลบ", "error");
+    }
+    setShowClearConfirm(false);
   };
 
   if (loading) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="text-center">
-                <p>Verifying admin access...</p>
-            </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <p>Verifying admin access...</p>
         </div>
+      </div>
     );
   }
 
   if (isAuthorized) {
     return (
-        <div className="min-h-screen bg-gray-100">
-          <ConfirmationModal
-              show={showClearConfirm}
-              title="ยืนยันการลบ"
-              message="คุณแน่ใจหรือไม่ว่าต้องการลบการแจ้งเตือนทั้งหมด?"
-              onConfirm={handleClearAll}
-              onCancel={() => setShowClearConfirm(false)}
-              isProcessing={false} 
-          />
-          <AdminNavbar 
-              notifications={notifications} 
-              unreadCount={unreadCount} 
-              onMarkAsRead={handleMarkAsRead}
-              onClearAll={handleClearAllClick}
-          />
-          <main>{children}</main>
-        </div>
+      <div className="min-h-screen bg-gray-100">
+        <ConfirmationModal
+          show={showClearConfirm}
+          title="ยืนยันการลบ"
+          message="คุณแน่ใจหรือไม่ว่าต้องการลบการแจ้งเตือนทั้งหมด?"
+          onConfirm={handleClearAll}
+          onCancel={() => setShowClearConfirm(false)}
+          isProcessing={false}
+        />
+        <AdminNavbar
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={handleMarkAsRead}
+          onClearAll={handleClearAllClick}
+        />
+        <main>{children}</main>
+      </div>
     );
   }
 
@@ -138,12 +138,12 @@ function AdminLayoutContent({ children }) {
 
 // Main Layout component that provides the Toast context (โค้ดเดิม)
 export default function AdminLayout({ children }) {
-    return (
-        <ToastProvider>
-            <ProfileProvider>
-                <AdminLayoutContent>{children}</AdminLayoutContent>
-            </ProfileProvider>
-        </ToastProvider>
-    )
+  return (
+    <ToastProvider>
+      <ProfileProvider>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </ProfileProvider>
+    </ToastProvider>
+  )
 }
 

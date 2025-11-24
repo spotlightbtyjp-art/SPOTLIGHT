@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth, db } from '@/app/lib/firebase';  
+import { auth, db } from '@/app/lib/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -14,7 +14,7 @@ export default function RegisterStaffPage() {
     email: '',
     password: '',
     lineUserId: '',
-    role: 'employee', 
+    role: 'employee',
     status: 'available'
   });
   const [loading, setLoading] = useState(false);
@@ -30,15 +30,15 @@ export default function RegisterStaffPage() {
     e.preventDefault();
     setError('');
     if (!formData.firstName || !formData.phone || !formData.email || !formData.password) {
-        setError("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
-        return;
+      setError("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
+      return;
     }
     if (formData.password.length < 6) {
-        setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
-        return;
+      setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+      return;
     }
     setLoading(true);
-    
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
@@ -95,65 +95,65 @@ export default function RegisterStaffPage() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-        <div className="max-w-2xl mx-auto">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h1 className="text-2xl font-bold mb-6">ลงทะเบียนผู้ใช้ใหม่ (แอดมิน / พนักงาน)</h1>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">ชื่อจริง</label>
-                            <input name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md"/>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">นามสกุล</label>
-                            <input name="lastName" value={formData.lastName} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md"/>
-                        </div>
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">ตำแหน่ง</label>
-                            <select name="role" value={formData.role} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md bg-white">
-                                <option value="employee">พนักงาน</option>
-                                <option value="admin">ผู้ดูแลระบบ</option>
-                            </select>
-                        </div>
-                        {/* --- แสดง Dropdown สถานะสำหรับพนักงานเท่านั้น --- */}
-                        {formData.role === 'employee' && ( // [!code focus]
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">สถานะ</label>
-                                <select name="status" value={formData.status} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md bg-white">
-                                    <option value="available">พร้อมทำงาน</option>
-                                    <option value="on_leave">ลาพัก</option>
-                                    <option value="suspended">พักงาน</option>
-                                </select>
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
-                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">อีเมล (สำหรับเข้าระบบ)</label>
-                        <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
-                        <input type="password" name="password" value={formData.password} onChange={handleChange} required placeholder="อย่างน้อย 6 ตัวอักษร" className="w-full mt-1 p-2 border rounded-md"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
-                        <input name="lineUserId" value={formData.lineUserId} onChange={handleChange} placeholder="U12345..." className="w-full mt-1 p-2 border rounded-md"/>
-                    </div>
-                    
-                    {error && <p className="text-red-500 text-sm text-center font-semibold">{error}</p>}
-                    
-                    <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                      {loading ? 'กำลังบันทึก...' : 'ลงทะเบียนผู้ใช้'}
-                    </button>
-                </form>
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h1 className="text-2xl font-bold mb-6">ลงทะเบียนผู้ใช้ใหม่ (แอดมิน / พนักงาน)</h1>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">ชื่อจริง</label>
+                <input name="firstName" value={formData.firstName} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">นามสกุล</label>
+                <input name="lastName" value={formData.lastName} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md" />
+              </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">ตำแหน่ง</label>
+                <select name="role" value={formData.role} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md bg-white">
+                  <option value="employee">พนักงาน</option>
+                  <option value="admin">ผู้ดูแลระบบ</option>
+                </select>
+              </div>
+              {/* --- แสดง Dropdown สถานะสำหรับพนักงานเท่านั้น --- */}
+              {formData.role === 'employee' && ( // [!code focus]
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">สถานะ</label>
+                  <select name="status" value={formData.status} onChange={handleChange} className="w-full mt-1 p-2 border rounded-md bg-white">
+                    <option value="available">พร้อมทำงาน</option>
+                    <option value="on_leave">ลาพัก</option>
+                    <option value="suspended">พักงาน</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">อีเมล (สำหรับเข้าระบบ)</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full mt-1 p-2 border rounded-md" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
+              <input type="password" name="password" value={formData.password} onChange={handleChange} required placeholder="อย่างน้อย 6 ตัวอักษร" className="w-full mt-1 p-2 border rounded-md" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
+              <input name="lineUserId" value={formData.lineUserId} onChange={handleChange} placeholder="U12345..." className="w-full mt-1 p-2 border rounded-md" />
+            </div>
+
+            {error && <p className="text-red-500 text-sm text-center font-semibold">{error}</p>}
+
+            <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+              {loading ? 'กำลังบันทึก...' : 'ลงทะเบียนผู้ใช้'}
+            </button>
+          </form>
         </div>
+      </div>
     </div>
   );
 }

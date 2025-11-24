@@ -333,6 +333,14 @@ export default function AdminAppointmentDetail() {
         customerName={appointment.customerInfo?.fullName || appointment.customerInfo?.name || 'ลูกค้า'}
         serviceInfo={serviceDetails || appointment.serviceInfo}
       />
+      <EditPaymentModal
+        open={showEditPayment}
+        onClose={() => setShowEditPayment(false)}
+        onSave={handleSavePayment}
+        defaultAmount={appointment.paymentInfo?.totalPrice}
+        defaultMethod={appointment.paymentInfo?.paymentMethod || 'เงินสด'}
+        currencySymbol={profile.currencySymbol}
+      />
 
       {/* Header */}
       <div className="max-w-6xl mx-auto mb-8">
@@ -446,6 +454,45 @@ export default function AdminAppointmentDetail() {
                         {appointment.serviceInfo.selectedPackage.name} • {appointment.serviceInfo.selectedPackage.duration} นาที • {formatPrice(appointment.serviceInfo.selectedPackage.price)} {profile.currencySymbol}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {appointment.serviceInfo?.serviceType === 'option-based' && (
+                  <div className="bg-gray-50 p-3 rounded-xl mb-3">
+                    {appointment.serviceInfo?.selectedOptionName && (
+                      <div className="text-sm mb-2">
+                        <span className="font-medium text-gray-900">🏷️ {appointment.serviceInfo.selectedOptionName}</span>
+                        {appointment.serviceInfo.selectedOptionPrice && (
+                          <span className="text-gray-500 text-xs ml-2">(@ {formatPrice(appointment.serviceInfo.selectedOptionPrice)} {profile.currencySymbol}</span>
+                        )}
+                        {appointment.serviceInfo.selectedOptionDuration && (
+                          <span className="text-gray-500 text-xs">, {appointment.serviceInfo.selectedOptionDuration} นาที)</span>
+                        )}
+                        {appointment.serviceInfo.selectedAreas?.length > 0 && (
+                          <span className="text-gray-500 text-xs ml-2">x {appointment.serviceInfo.selectedAreas.length} จุด</span>
+                        )}
+                      </div>
+                    )}
+                    {appointment.serviceInfo?.selectedAreas?.length > 0 && (
+                      <div className="text-xs text-gray-500 pl-6">
+                        {appointment.serviceInfo.selectedAreas.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {appointment.serviceInfo?.serviceType === 'area-based-options' && appointment.serviceInfo?.selectedAreaOptions?.length > 0 && (
+                  <div className="bg-gray-50 p-3 rounded-xl mb-3 space-y-2">
+                    {appointment.serviceInfo.selectedAreaOptions.map((opt, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-900">🔸 {opt.areaName} ({opt.optionName})</span>
+                        <div className="text-gray-500 text-xs flex items-center gap-2">
+                          {opt.duration && <span>{opt.duration} นาที</span>}
+                          {opt.price && opt.duration && <span>•</span>}
+                          {opt.price && <span>{formatPrice(opt.price)} {profile.currencySymbol}</span>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 

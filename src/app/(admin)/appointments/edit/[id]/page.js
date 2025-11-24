@@ -19,7 +19,7 @@ export default function EditAppointmentPage() {
     const [services, setServices] = useState([]);
     const [technicians, setBeauticians] = useState([]);
     const [unavailabletechnicianIds, setUnavailabletechnicianIds] = useState(new Set());
-    
+
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,7 +88,7 @@ export default function EditAppointmentPage() {
                 const querySnapshot = await getDocs(q);
                 const unavailableIds = new Set(
                     querySnapshot.docs
-                        .filter(doc => doc.id !== id) 
+                        .filter(doc => doc.id !== id)
                         .map(doc => doc.data().technicianId)
                 );
                 setUnavailabletechnicianIds(unavailableIds);
@@ -98,7 +98,7 @@ export default function EditAppointmentPage() {
         };
         checkAvailability();
     }, [formData?.date, formData?.time, id]);
-    
+
     const selectedService = useMemo(() => services.find(s => s.id === formData?.serviceId), [services, formData?.serviceId]);
     const { totalPrice } = useMemo(() => {
         if (!selectedService) return { totalPrice: 0 };
@@ -118,7 +118,7 @@ export default function EditAppointmentPage() {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
     };
-    
+
     const handleAddOnToggle = (addOnName) => {
         setFormData(prev => ({
             ...prev,

@@ -9,7 +9,7 @@ import { useToast } from '@/app/components/Toast';
 import { createAppointmentWithSlotCheck } from '@/app/actions/appointmentActions';
 import { findOrCreateCustomer } from '@/app/actions/customerActions';
 import { useProfile } from '@/context/ProfileProvider';
-import TechnicianCard from '@/app/components/admin/TechnicianCard'; // แก้ไขชื่อ import ให้ถูกต้อง (ตัวใหญ่)
+import TechnicianCard from '@/app/components/admin/TechnicianCard';
 import TimeSlotGrid from '@/app/components/admin/TimeSlotGrid';
 
 export default function CreateAppointmentPage() {
@@ -38,6 +38,9 @@ export default function CreateAppointmentPage() {
     // สำหรับ option-based services (New)
     const [selectedOptionIndex, setSelectedOptionIndex] = useState(null);
     const [selectedAreas, setSelectedAreas] = useState([]);
+
+    // สำหรับ area-based-options services (Newest)
+    const [selectedAreaOptions, setSelectedAreaOptions] = useState({}); // { areaName: optionIndex }
 
     // State for data from Firestore
     const [services, setServices] = useState([]);
@@ -243,8 +246,18 @@ export default function CreateAppointmentPage() {
                 base = option.price * multiplier;
                 duration = option.duration * multiplier;
             }
+        } else if (selectedService.serviceType === 'area-based-options') {
+            // 3. Area-Based-Options
+            Object.entries(selectedAreaOptions).forEach(([areaName, optIdx]) => {
+                const areaGroup = selectedService.areaOptions?.find(g => g.areaName === areaName);
+                if (areaGroup && areaGroup.options[optIdx]) {
+                    const opt = areaGroup.options[optIdx];
+                    base += Number(opt.price) || 0;
+                    duration += Number(opt.duration) || 0;
+                }
+            });
         } else {
-            // 3. Single
+            // 4. Single
             base = selectedService.price || 0;
             duration = selectedService.duration || 0;
         }
@@ -258,7 +271,7 @@ export default function CreateAppointmentPage() {
             totalPrice: base + addOnsPrice,
             totalDuration: duration + addOnsDuration
         };
-    }, [selectedService, selectedAddOns, selectedAreaIndex, selectedPackageIndex, selectedOptionIndex, selectedAreas]);
+    }, [selectedService, selectedAddOns, selectedAreaIndex, selectedPackageIndex, selectedOptionIndex, selectedAreas, selectedAreaOptions]);
 
     const checkExistingCustomer = async (phone, lineUserId) => {
         if (!phone && !lineUserId) {
@@ -408,6 +421,8 @@ export default function CreateAppointmentPage() {
         // Reset Option-Based
         setSelectedOptionIndex(null);
         setSelectedAreas([]);
+        // Reset Area-Based-Options
+        setSelectedAreaOptions({});
     };
 
     const handleAddOnToggle = (addOnName) => {
@@ -425,6 +440,18 @@ export default function CreateAppointmentPage() {
                 ? prev.filter(a => a !== areaName)
                 : [...prev, areaName]
         );
+    };
+
+    // Handler สำหรับ Area-Based-Options
+    const handleAreaOptionChange = (areaName, optionIdx) => {
+        setSelectedAreaOptions(prev => {
+            if (optionIdx === '') {
+                const newState = { ...prev };
+                delete newState[areaName];
+                return newState;
+            }
+            return { ...prev, [areaName]: Number(optionIdx) };
+        });
     };
 
     const handleCustomerInfoChange = (e) => {
@@ -460,6 +487,14 @@ export default function CreateAppointmentPage() {
             }
             if (selectedOptionIndex === null) {
                 showToast('กรุณาเลือกแพ็คเกจ', 'error');
+                return;
+            }
+        }
+
+        // Validate: Area-Based-Options
+        if (selectedService.serviceType === 'area-based-options') {
+            if (Object.keys(selectedAreaOptions).length === 0) {
+                showToast('กรุณาเลือกตัวเลือกอย่างน้อย 1 พื้นที่', 'error');
                 return;
             }
         }
@@ -527,6 +562,7 @@ export default function CreateAppointmentPage() {
                 packageIndex: null,
                 selectedOptionName: null,
                 selectedAreas: [],
+                selectedAreaOptions: [],
             };
 
             let appointmentInfo = {
@@ -542,6 +578,7 @@ export default function CreateAppointmentPage() {
                 packageIndex: null,
                 selectedOptionName: null,
                 selectedAreas: [],
+                selectedAreaOptions: [],
             };
 
             // Populate for multi-area
@@ -569,6 +606,22 @@ export default function CreateAppointmentPage() {
 
                 appointmentInfo.selectedOptionName = optionName;
                 appointmentInfo.selectedAreas = selectedAreas;
+            }
+
+            // Populate for area-based-options
+            if (selectedService.serviceType === 'area-based-options') {
+                const areaOptionsList = Object.entries(selectedAreaOptions).map(([areaName, optIdx]) => {
+                    const areaGroup = selectedService.areaOptions.find(g => g.areaName === areaName);
+                    const opt = areaGroup.options[optIdx];
+                    return {
+                        areaName,
+                        optionName: opt.name,
+                        price: opt.price,
+                        duration: opt.duration
+                    };
+                });
+                serviceInfo.selectedAreaOptions = areaOptionsList;
+                appointmentInfo.selectedAreaOptions = areaOptionsList;
             }
 
             const appointmentData = {
@@ -653,7 +706,9 @@ export default function CreateAppointmentPage() {
                                                                 ? `${s.areas?.length || 0} พื้นที่`
                                                                 : s.serviceType === 'option-based'
                                                                     ? 'เลือกพื้นที่ + แพ็คเกจ'
-                                                                    : `${s.duration || '-'} นาที`
+                                                                    : s.serviceType === 'area-based-options'
+                                                                        ? 'เลือกตัวเลือกตามพื้นที่'
+                                                                        : `${s.duration || '-'} นาที`
                                                             }
                                                             {' | '}{profile?.currencySymbol}{(s.price ?? s.basePrice ?? 0).toLocaleString()}
                                                         </div>
@@ -773,6 +828,34 @@ export default function CreateAppointmentPage() {
                                     )
                                 }
 
+                                {/* UI สำหรับ Area-Based-Options (Newest) */}
+                                {
+                                    selectedService?.serviceType === 'area-based-options' && (
+                                        <div className="mt-6 space-y-6 border-t pt-4">
+                                            <h3 className="text-md font-bold text-gray-700 mb-2">เลือกตัวเลือกสำหรับแต่ละพื้นที่</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {selectedService.areaOptions?.map((areaGroup, idx) => (
+                                                    <div key={idx} className="p-4 border rounded-xl bg-gray-50">
+                                                        <h4 className="font-bold text-gray-800 mb-3">{areaGroup.areaName}</h4>
+                                                        <select
+                                                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                            value={selectedAreaOptions[areaGroup.areaName] !== undefined ? selectedAreaOptions[areaGroup.areaName] : ''}
+                                                            onChange={(e) => handleAreaOptionChange(areaGroup.areaName, e.target.value)}
+                                                        >
+                                                            <option value="">-- ไม่เลือก --</option>
+                                                            {areaGroup.options.map((opt, optIdx) => (
+                                                                <option key={optIdx} value={optIdx}>
+                                                                    {opt.name} ({opt.price} {profile.currencySymbol} / {opt.duration} นาที)
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                }
+
                                 {
                                     selectedService?.addOnServices?.length > 0 && (
                                         <div className="mt-6 border-t pt-4">
@@ -798,230 +881,215 @@ export default function CreateAppointmentPage() {
 
                             {/* Section 2: Calendar & Time */}
                             < div className="p-4 border rounded-lg" >
-                                <h2 className="text-sm font-semibold mb-3">2. ช่างและวันเวลา</h2>
-                                <div className={`grid grid-cols-1 ${!usetechnician ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
-                                    {/* Calendar Code (Same as original) */}
-                                    <div className="space-y-2">
-                                        <label className="block text-sm font-medium text-gray-700">วันที่</label>
-                                        <div className="calendar-container bg-white rounded-lg shadow p-4 border border-gray-200">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const prevMonth = new Date(activeMonth);
-                                                        prevMonth.setMonth(prevMonth.getMonth() - 1);
-                                                        setActiveMonth(prevMonth);
-                                                    }}
-                                                    className="p-2 hover:bg-gray-100 rounded-full"
-                                                >
-                                                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                                    </svg>
-                                                </button>
-                                                <span className="text-sm font-medium text-gray-700">
-                                                    {activeMonth.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const nextMonth = new Date(activeMonth);
-                                                        nextMonth.setMonth(nextMonth.getMonth() + 1);
-                                                        setActiveMonth(nextMonth);
-                                                    }}
-                                                    className="p-2 hover:bg-gray-100 rounded-full"
-                                                >
-                                                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                            <div className="grid grid-cols-7 gap-1 mb-2 text-center">
-                                                {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
-                                                    <div key={day} className="text-xs font-medium text-gray-500">
-                                                        {day}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="grid grid-cols-7 gap-1">
-                                                {(() => {
-                                                    const currentYear = activeMonth.getFullYear();
-                                                    const currentMonth = activeMonth.getMonth();
-                                                    const firstDay = new Date(currentYear, currentMonth, 1, 0, 0, 0);
-                                                    const lastDay = new Date(currentYear, currentMonth + 1, 0, 0, 0, 0);
-
-                                                    const days = [];
-                                                    const today = new Date();
-                                                    today.setHours(0, 0, 0, 0);
-
-                                                    for (let i = 0; i < firstDay.getDay(); i++) {
-                                                        days.push(<div key={`empty-${i}`} className="p-2" />);
-                                                    }
-
-                                                    for (let day = 1; day <= lastDay.getDate(); day++) {
-                                                        const date = new Date(currentYear, currentMonth, day, 7, 0, 0);
-                                                        const dateString = format(date, 'yyyy-MM-dd');
-                                                        const isSelected = dateString === appointmentDate;
-                                                        const isPast = date < today;
-                                                        const isToday = date.toDateString() === today.toDateString();
-                                                        const { isHoliday, holidayInfo } = checkHolidayDate(date);
-                                                        const isDisabled = isPast || isDateDisabled(date);
-
-                                                        days.push(
-                                                            <button
-                                                                key={day}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    if (isPast || isHoliday || isDisabled) return;
-                                                                    setAppointmentDate(dateString);
-                                                                    setAppointmentTime('');
-                                                                    setSelectedtechnicianId('');
-                                                                }}
-                                                                disabled={isDisabled || isHoliday}
-                                                                className={`
-                                                                    w-8 h-8 mx-auto flex items-center justify-center rounded-full text-sm transition-colors
-                                                                    ${isSelected ? 'bg-primary text-white font-bold' : ''}
-                                                                    ${!isSelected && isPast ? 'text-gray-300 cursor-not-allowed' : ''}
-                                                                    ${!isSelected && isHoliday ? 'text-red-400 cursor-not-allowed bg-red-50' : ''}
-                                                                    ${!isSelected && !isPast && !isHoliday && isDisabled ? 'text-gray-300 bg-gray-100 cursor-not-allowed' : ''}
-                                                                    ${!isSelected && !isPast && !isHoliday && !isDisabled ? 'hover:bg-gray-100 text-gray-700' : ''}
-                                                                    ${isToday && !isSelected ? 'border border-primary text-primary' : ''}
-                                                                `}
-                                                            >
-                                                                {day}
-                                                            </button>
-                                                        );
-                                                    }
-                                                    return days;
-                                                })()}
-                                            </div>
-                                        </div>
+                                <h2 className="text-sm font-semibold mb-3">2. วันและเวลา</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">วันที่</label>
+                                        <input
+                                            type="date"
+                                            value={appointmentDate}
+                                            onChange={(e) => setAppointmentDate(e.target.value)}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                        />
                                     </div>
-
-                                    <div className="w-full max-w-md mx-auto">
-                                        <h2 className="text-base font-bold mb-2 text-primary">เลือกช่วงเวลา</h2>
-                                        {/* ... (Time selection logic same as before) ... */}
-                                        {appointmentDate && !isDateOpen(new Date(appointmentDate)) ? (
-                                            <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
-                                                <p className="text-red-500 text-sm">วันหยุดทำการ</p>
-                                            </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">เวลา</label>
+                                        {appointmentDate ? (
+                                            availableTimeSlots.length > 0 ? (
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                                    {availableTimeSlots.map((slot) => (
+                                                        <button
+                                                            key={slot}
+                                                            type="button"
+                                                            onClick={() => setAppointmentTime(slot)}
+                                                            disabled={unavailableSlots.has(slot)}
+                                                            className={`
+                                                                py-2 px-1 text-sm rounded-md border transition-all
+                                                                ${appointmentTime === slot
+                                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                                                    : unavailableSlots.has(slot)
+                                                                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                                        : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-500 hover:text-indigo-600'
+                                                                }
+                                                            `}
+                                                        >
+                                                            {slot}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-red-500 text-sm p-3 bg-red-50 rounded-lg border border-red-100">
+                                                    ไม่มีคิวว่างในวันนี้
+                                                </div>
+                                            )
                                         ) : (
-                                            <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-1">
-                                                {bookingSettings.timeQueues
-                                                    .filter(q => q.time && isTimeInBusinessHours(q.time))
-                                                    .sort((a, b) => String(a.time).localeCompare(String(b.time)))
-                                                    .map(queue => {
-                                                        const slot = queue.time;
-                                                        const max = bookingSettings.usetechnician ? technicians.length : (queue.count || bookingSettings.totaltechnicians);
-                                                        const booked = slotCounts[slot] || 0;
-                                                        const isFull = booked >= max;
-                                                        const isOverlapping = unavailableSlots.has(slot);
-                                                        const isDisabled = isFull || isOverlapping;
-
-                                                        return (
-                                                            <button
-                                                                key={slot}
-                                                                type="button"
-                                                                onClick={() => !isDisabled && setAppointmentTime(slot)}
-                                                                className={`rounded-md px-2 py-2 text-xs font-semibold shadow-sm transition-colors border
-                                                                    ${appointmentTime === slot ? 'bg-primary-dark text-white border-primary-dark' : 'bg-white text-gray-700 border-gray-200 hover:border-primary'}
-                                                                    ${isDisabled ? 'opacity-40 cursor-not-allowed bg-gray-50' : ''}`}
-                                                                disabled={isDisabled}
-                                                            >
-                                                                {slot} {isFull && '(เต็ม)'} {isOverlapping && !isFull && '(ทับ)'}
-                                                            </button>
-                                                        );
-                                                    })}
+                                            <div className="text-gray-400 text-sm p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                กรุณาเลือกวันที่ก่อน
                                             </div>
                                         )}
                                     </div>
-
-                                    {bookingSettings.usetechnician && (
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-medium text-gray-700">ช่าง</label>
-                                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                                                {technicians.map(b => (
-                                                    <TechnicianCard
-                                                        key={b.id}
-                                                        technician={b}
-                                                        isSelected={selectedtechnicianId === b.id}
-                                                        onSelect={(technician) => setSelectedtechnicianId(technician.id)}
-                                                        isAvailable={!unavailabletechnicianIds.has(b.id)}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
-                            </div >
-                        </div >
+                            </div>
 
-                        {/* คอลัมน์ขวา: ขั้นตอน 3 */}
-                        < div className="lg:col-span-1" >
-                            <div className="p-4 border rounded-lg top-4 sticky">
+                            {/* Section 3: Customer Info */}
+                            <div className="p-4 border rounded-lg">
                                 <h2 className="text-sm font-semibold mb-3">3. ข้อมูลลูกค้า</h2>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <input
-                                        name="fullName"
-                                        value={customerInfo.fullName}
-                                        onChange={handleCustomerInfoChange}
-                                        placeholder="ชื่อ-นามสกุล"
-                                        className="w-full p-2 border rounded-md"
-                                        required
-                                    />
-                                    <input
-                                        type="tel"
-                                        name="phone"
-                                        value={customerInfo.phone}
-                                        onChange={handleCustomerInfoChange}
-                                        placeholder="เบอร์โทรศัพท์"
-                                        className="w-full p-2 border rounded-md"
-                                        required
-                                    />
-                                    <input
-                                        type="text"
-                                        name="lineUserId"
-                                        value={customerInfo.lineUserId}
-                                        onChange={handleCustomerInfoChange}
-                                        placeholder="LINE User ID (ถ้ามี)"
-                                        className="w-full p-2 border rounded-md"
-                                    />
-                                </div>
 
-                                {/* Existing Customer Check UI (Same as original) */}
-                                {existingCustomer && !isCheckingCustomer && (
-                                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                                            <span className="text-sm font-medium text-green-800">ลูกค้าเดิม</span>
+                                {/* Search / Existing Customer Alert */}
+                                {isCheckingCustomer && <div className="text-sm text-blue-600 mb-2 animate-pulse">กำลังตรวจสอบข้อมูลลูกค้า...</div>}
+                                {existingCustomer && (
+                                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                                        <div className="p-1 bg-green-100 rounded-full text-green-600">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                                         </div>
-                                        <div className="text-xs text-green-700">
-                                            {existingCustomer.fullName} ({existingCustomer.phone})
+                                        <div>
+                                            <p className="text-sm font-bold text-green-800">ลูกค้าเก่า: {existingCustomer.fullName}</p>
+                                            <p className="text-xs text-green-600">แต้มสะสม: {existingCustomer.points || 0} แต้ม</p>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="p-4 border-t mt-6 bg-gray-50 rounded-md">
-                                    <div className="flex justify-between items-center gap-2 mb-2">
-                                        <span className="text-gray-600 text-sm">ยอดรวม:</span>
-                                        <span className="text-xl font-bold text-primary">{totalPrice.toLocaleString()} {profile.currencySymbol}</span>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="text"
+                                            name="fullName"
+                                            value={customerInfo.fullName}
+                                            onChange={handleCustomerInfoChange}
+                                            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            placeholder="ชื่อลูกค้า"
+                                            required
+                                        />
                                     </div>
-                                    <div className="text-xs text-gray-500 text-right mb-4">
-                                        ระยะเวลา: {totalDuration} นาที
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์ <span className="text-red-500">*</span></label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            value={customerInfo.phone}
+                                            onChange={handleCustomerInfoChange}
+                                            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            placeholder="08xxxxxxxx"
+                                            required
+                                        />
                                     </div>
-
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting || (usetechnician && !selectedtechnicianId)}
-                                        className="w-full bg-primary-dark text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-colors"
-                                    >
-                                        {isSubmitting ? 'กำลังบันทึก...' : 'สร้างการนัดหมาย'}
-                                    </button>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">LINE User ID (ถ้ามี)</label>
+                                        <input
+                                            type="text"
+                                            name="lineUserId"
+                                            value={customerInfo.lineUserId}
+                                            onChange={handleCustomerInfoChange}
+                                            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            placeholder="Uxxxxxxxx..."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">ใส่เพื่อเชื่อมต่อกับบัญชี LINE ของลูกค้า (สำหรับการแจ้งเตือน)</p>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                                        <textarea
+                                            name="note"
+                                            value={customerInfo.note}
+                                            onChange={handleCustomerInfoChange}
+                                            rows="2"
+                                            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                            placeholder="รายละเอียดเพิ่มเติม..."
+                                        ></textarea>
+                                    </div>
                                 </div>
                             </div>
-                        </div >
-                    </div >
-                </form >
-            </div >
-        </div >
+                        </div>
+
+                        {/* คอลัมน์ขวา: สรุปยอด */}
+                        <div className="lg:col-span-1">
+                            <div className="bg-gray-50 p-6 rounded-xl border sticky top-6">
+                                <h2 className="text-lg font-bold text-gray-800 mb-4">สรุปรายการ</h2>
+
+                                <div className="space-y-4 mb-6">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">บริการ:</span>
+                                        <span className="font-medium text-right">{selectedService?.serviceName || '-'}</span>
+                                    </div>
+
+                                    {/* Display Selection Details */}
+                                    {selectedService?.serviceType === 'multi-area' && selectedAreaIndex !== null && (
+                                        <div className="flex justify-between text-sm pl-2 border-l-2 border-gray-200">
+                                            <span className="text-gray-500">พื้นที่:</span>
+                                            <span className="text-gray-700">{selectedService.areas[selectedAreaIndex].name}</span>
+                                        </div>
+                                    )}
+                                    {selectedService?.serviceType === 'option-based' && selectedAreas.length > 0 && (
+                                        <div className="flex justify-between text-sm pl-2 border-l-2 border-gray-200">
+                                            <span className="text-gray-500">พื้นที่ ({selectedAreas.length}):</span>
+                                            <span className="text-gray-700 text-right">{selectedAreas.join(', ')}</span>
+                                        </div>
+                                    )}
+                                    {selectedService?.serviceType === 'area-based-options' && Object.keys(selectedAreaOptions).length > 0 && (
+                                        <div className="text-sm pl-2 border-l-2 border-gray-200 space-y-1">
+                                            {Object.entries(selectedAreaOptions).map(([area, idx]) => {
+                                                const opt = selectedService.areaOptions.find(g => g.areaName === area)?.options[idx];
+                                                return (
+                                                    <div key={area} className="flex justify-between">
+                                                        <span className="text-gray-500">{area}:</span>
+                                                        <span className="text-gray-700">{opt?.name}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">วันที่:</span>
+                                        <span className="font-medium">
+                                            {appointmentDate ? format(new Date(appointmentDate), 'dd/MM/yyyy') : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">เวลา:</span>
+                                        <span className="font-medium">{appointmentTime || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-gray-600">ระยะเวลา:</span>
+                                        <span className="font-medium">{totalDuration} นาที</span>
+                                    </div>
+
+                                    {selectedAddOns.length > 0 && (
+                                        <div className="pt-2 border-t border-dashed">
+                                            <div className="text-xs text-gray-500 mb-1">บริการเสริม:</div>
+                                            {selectedAddOns.map((addon, idx) => (
+                                                <div key={idx} className="flex justify-between text-sm text-gray-600">
+                                                    <span>+ {addon.name}</span>
+                                                    <span>{addon.price} {profile.currencySymbol}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="pt-4 border-t border-gray-200">
+                                    <div className="flex justify-between items-end mb-1">
+                                        <span className="text-gray-600 font-medium">ราคารวม</span>
+                                        <span className="text-2xl font-bold text-indigo-600">
+                                            {totalPrice.toLocaleString()} <span className="text-sm font-normal text-gray-500">{profile.currencySymbol}</span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className={`w-full mt-6 py-3 px-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:scale-[1.02] ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black'
+                                        }`}
+                                >
+                                    {isSubmitting ? 'กำลังบันทึก...' : 'ยืนยันการนัดหมาย'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }

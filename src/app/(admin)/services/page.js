@@ -35,6 +35,13 @@ const formatServicePrice = (service, currencySymbol) => {
     const max = Math.max(...prices);
     return min === max ? `${formatPrice(min)} ${currencySymbol}` : `${formatPrice(min)} - ${formatPrice(max)} ${currencySymbol}`;
   }
+  if (service.serviceType === 'area-based-options') {
+    const allPrices = service.areaOptions?.flatMap(a => a.options.map(o => Number(o.price))) || [];
+    if (allPrices.length === 0) return `0 ${currencySymbol}`;
+    const min = Math.min(...allPrices);
+    const max = Math.max(...allPrices);
+    return min === max ? `${formatPrice(min)} ${currencySymbol}` : `${formatPrice(min)} - ${formatPrice(max)} ${currencySymbol}`;
+  }
   return `${formatPrice(service.price)} ${currencySymbol}`;
 };
 
@@ -191,7 +198,7 @@ export default function ServicesListPage() {
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-1.5 text-gray-600">
                             <Icons.Clock />
-                            <span>{service.serviceType === 'option-based' ? 'ตามตัวเลือก' : `${service.duration} นาที`}</span>
+                            <span>{['option-based', 'area-based-options'].includes(service.serviceType) ? 'ตามตัวเลือก' : `${service.duration} นาที`}</span>
                           </div>
                           <span className="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
                             {formatServicePrice(service, profile?.currencySymbol || '฿')}
@@ -242,7 +249,7 @@ export default function ServicesListPage() {
                             </div>
                           </td>
                           <td className="py-4 font-medium text-indigo-600">{formatServicePrice(service, profile?.currencySymbol || '฿')}</td>
-                          <td className="py-4">{service.serviceType === 'option-based' ? 'ตามตัวเลือก' : `${service.duration} นาที`}</td>
+                          <td className="py-4">{['option-based', 'area-based-options'].includes(service.serviceType) ? 'ตามตัวเลือก' : `${service.duration} นาที`}</td>
                           <td className="py-4"><StatusBadge status={service.status} /></td>
                           <td className="py-4 pr-6 text-right space-x-2">
                             <Link href={`/services/edit/${service.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-xs">แก้ไข</Link>

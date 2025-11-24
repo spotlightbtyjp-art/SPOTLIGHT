@@ -18,10 +18,10 @@ export default function PointsManagementPage() {
 
     setLoading(true);
     setMessage('');
-    
+
     try {
       const result = await getPointsByPhone(phoneNumber.trim());
-      
+
       if (result.success) {
         setCustomerInfo(result);
         if (result.customerInfo) {
@@ -83,11 +83,10 @@ export default function PointsManagementPage() {
 
         {/* Message */}
         {message && (
-          <div className={`p-4 rounded-md mb-6 ${
-            message.includes('เกิดข้อผิดพลาด') 
+          <div className={`p-4 rounded-md mb-6 ${message.includes('เกิดข้อผิดพลาด')
               ? 'bg-red-50 text-red-700 border border-red-200'
               : 'bg-blue-50 text-blue-700 border border-blue-200'
-          }`}>
+            }`}>
             {message}
           </div>
         )}
@@ -96,33 +95,33 @@ export default function PointsManagementPage() {
         {customerInfo && customerInfo.customerInfo && (
           <div className="bg-gray-50 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">ข้อมูลคะแนนลูกค้า</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600">เบอร์โทรศัพท์</label>
                 <p className="text-gray-900">{customerInfo.customerInfo.phoneNumber}</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">คะแนนปัจจุบัน</label>
                 <p className="text-2xl font-bold text-green-600">{customerInfo.points} คะแนน</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">การนัดหมายล่าสุด</label>
                 <p className="text-gray-900">{customerInfo.customerInfo.lastAppointmentId || 'ไม่ระบุ'}</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">คะแนนที่ได้รับล่าสุด</label>
                 <p className="text-gray-900">{customerInfo.customerInfo.lastPointsAwarded || 0} คะแนน</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">วันที่ได้รับคะแนนล่าสุด</label>
                 <p className="text-gray-900">{formatDate(customerInfo.customerInfo.lastPointsDate)}</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-600">สถานะ LINE</label>
                 <p className="text-red-600 font-medium">ไม่มี LINE ID</p>
@@ -132,7 +131,7 @@ export default function PointsManagementPage() {
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
               <h3 className="font-medium text-yellow-800 mb-2">หมายเหตุสำหรับแอดมิน</h3>
               <p className="text-sm text-yellow-700">
-                ลูกค้ารายนี้ไม่มี LINE ID จึงไม่สามารถรับแจ้งเตือนคะแนนผ่าน LINE ได้ 
+                ลูกค้ารายนี้ไม่มี LINE ID จึงไม่สามารถรับแจ้งเตือนคะแนนผ่าน LINE ได้
                 แนะนำให้แจ้งคะแนนผ่านช่องทางอื่น เช่น โทรศัพท์ หรือ SMS
               </p>
             </div>

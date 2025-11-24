@@ -31,7 +31,7 @@ export default function EditAdminPage() {
     try {
       const adminRef = doc(db, 'admins', params.id);
       const adminSnap = await getDoc(adminRef);
-      
+
       if (adminSnap.exists()) {
         const data = adminSnap.data();
         setAdminData({
@@ -63,14 +63,14 @@ export default function EditAdminPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!adminData.firstName || !adminData.phoneNumber || !adminData.email) {
       showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 'error');
       return;
     }
 
     setSaving(true);
-    
+
     try {
       const updateData = {
         firstName: adminData.firstName,
@@ -80,7 +80,7 @@ export default function EditAdminPage() {
       };
 
       const result = await updateAdmin(params.id, updateData);
-      
+
       if (result.success) {
         showToast('บันทึกข้อมูลสำเร็จ', 'success');
         router.push('/admins');
@@ -131,7 +131,7 @@ export default function EditAdminPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   นามสกุล
@@ -198,7 +198,7 @@ export default function EditAdminPage() {
               >
                 {saving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
               </button>
-              
+
               <button
                 type="button"
                 onClick={() => router.push('/admins')}

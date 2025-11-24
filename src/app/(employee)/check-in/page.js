@@ -30,7 +30,7 @@ const PaymentQrModal = ({ show, onClose, appointment, profile }) => {
                 try {
                     const settingsResult = await getPaymentSettings();
                     if (!settingsResult.success) throw new Error(settingsResult.error || "ไม่พบการตั้งค่าการชำระเงิน");
-                    
+
                     const { settings } = settingsResult;
                     if (settings.method === 'image') {
                         if (!settings.qrCodeImageUrl) throw new Error("แอดมินยังไม่ได้ตั้งค่ารูปภาพ QR Code");
@@ -62,9 +62,9 @@ const PaymentQrModal = ({ show, onClose, appointment, profile }) => {
                 <h2 className="text-lg font-bold mb-1 text-gray-800">Scan to Pay</h2>
                 <p className="text-2xl font-bold text-blue-600 mb-3">{appointment.paymentInfo.totalPrice?.toLocaleString()} {profile.currencySymbol}</p>
                 <div className="h-64 w-64 mx-auto flex items-center justify-center">
-                    {loading ? <p>กำลังสร้าง QR Code...</p> : 
-                     error ? <p className="text-red-500 text-sm">{error}</p> : 
-                     qrCodeUrl && <Image src={qrCodeUrl} alt="Payment QR Code" width={256} height={256} style={{ objectFit: 'contain' }} />}
+                    {loading ? <p>กำลังสร้าง QR Code...</p> :
+                        error ? <p className="text-red-500 text-sm">{error}</p> :
+                            qrCodeUrl && <Image src={qrCodeUrl} alt="Payment QR Code" width={256} height={256} style={{ objectFit: 'contain' }} />}
                 </div>
                 <button onClick={onClose} className="mt-4 w-full bg-gray-200 text-gray-800 py-2 rounded-xl font-semibold">ปิด</button>
             </div>
@@ -76,10 +76,10 @@ const PaymentQrModal = ({ show, onClose, appointment, profile }) => {
 const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
     const [showQr, setShowQr] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
-    
+
     // [2] State สำหรับ Confirmation Modal
     const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', action: null });
-    
+
     const { showToast } = useToast();
 
     if (!appointment) return null;
@@ -97,7 +97,7 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
 
     const handleUpdatePayment = async () => {
         if (!profile?.userId) return showToast("ไม่สามารถระบุตัวตนพนักงานได้", "error");
-        
+
         setIsUpdating(true);
         const result = await updatePaymentStatusByEmployee(appointment.id, profile.userId);
         if (result.success) {
@@ -122,7 +122,7 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
         }
         setIsUpdating(false);
     };
-    
+
     const handleStatusChange = async (newStatus) => {
         if (!profile?.userId) return showToast("ไม่สามารถระบุตัวตนพนักงานได้", "error");
 
@@ -177,7 +177,78 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
                 {/* --- Appointment Info --- */}
                 <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
                     <p className="font-bold text-lg">{appointment.customerInfo.fullName}</p>
-                    <p className="text-sm text-gray-600">{appointment.serviceInfo.name}</p>
+                    <p className="text-sm text-gray-600 font-semibold mb-2">{appointment.serviceInfo.name}</p>
+
+                    {/* Multi-area service details */}
+                    {appointment.serviceInfo?.serviceType === 'multi-area' && (
+                        <div className="bg-gray-50 p-2 rounded-lg mb-2 text-xs">
+                            {appointment.serviceInfo?.selectedArea && (
+                                <p className="text-gray-700">📍 {appointment.serviceInfo.selectedArea.name}</p>
+                            )}
+                            {appointment.serviceInfo?.selectedPackage && (
+                                <div className="text-gray-600 flex justify-between items-center">
+                                    <span>📦 {appointment.serviceInfo.selectedPackage.name}</span>
+                                    <span className="text-gray-500">{appointment.serviceInfo.selectedPackage.duration} นาที</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Option-based service details */}
+                    {appointment.serviceInfo?.serviceType === 'option-based' && (
+                        <div className="bg-gray-50 p-2 rounded-lg mb-2 text-xs space-y-1">
+                            {appointment.serviceInfo?.selectedOptionName && (
+                                <div className="flex justify-between items-center">
+                                    <p className="text-gray-700 font-medium flex-1">
+                                        🏷️ {appointment.serviceInfo.selectedOptionName}
+                                        {appointment.serviceInfo.selectedAreas?.length > 0 && (
+                                            <span className="text-gray-500"> x {appointment.serviceInfo.selectedAreas.length} จุด</span>
+                                        )}
+                                    </p>
+                                    {appointment.serviceInfo.selectedOptionDuration && (
+                                        <span className="text-gray-500 ml-2">{appointment.serviceInfo.selectedOptionDuration} นาที/จุด</span>
+                                    )}
+                                </div>
+                            )}
+                            {appointment.serviceInfo?.selectedAreas?.length > 0 && (
+                                <p className="text-gray-600 pl-4">({appointment.serviceInfo.selectedAreas.join(', ')})</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Area-based-options service details */}
+                    {appointment.serviceInfo?.serviceType === 'area-based-options' && appointment.serviceInfo?.selectedAreaOptions?.length > 0 && (
+                        <div className="bg-gray-50 p-2 rounded-lg mb-2 text-xs space-y-1">
+                            {appointment.serviceInfo.selectedAreaOptions.map((opt, idx) => (
+                                <div key={idx} className="flex justify-between items-center">
+                                    <span className="text-gray-700">🔸 {opt.areaName} ({opt.optionName})</span>
+                                    <div className="text-gray-500 flex items-center gap-1">
+                                        {opt.duration && <span>{opt.duration} นาที</span>}
+                                        {opt.duration && opt.price && <span>•</span>}
+                                        {opt.price && <span>{Number(opt.price).toLocaleString()} {profile.currencySymbol}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Add-ons */}
+                    {appointment.appointmentInfo?.addOns?.length > 0 && (
+                        <div className="bg-blue-50 p-2 rounded-lg mb-2 text-xs space-y-1">
+                            <p className="font-semibold text-blue-800">บริการเสริม:</p>
+                            {appointment.appointmentInfo.addOns.map((addon, idx) => (
+                                <div key={idx} className="flex justify-between items-center text-blue-700">
+                                    <span>+ {addon.name}</span>
+                                    <div className="flex items-center gap-1 text-blue-600">
+                                        {addon.duration && <span>{addon.duration} นาที</span>}
+                                        {addon.duration && addon.price && <span>•</span>}
+                                        {addon.price && <span>{Number(addon.price).toLocaleString()} {profile.currencySymbol}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     <hr className="my-2" />
                     <p className="text-sm"><strong>วันที่:</strong> {format(parseISO(appointment.date), 'dd MMMM yyyy', { locale: th })}</p>
                     <p className="text-sm"><strong>เวลา:</strong> {appointment.time} น.</p>
@@ -205,27 +276,27 @@ const ManagementModal = ({ appointment, onClose, onAction, profile }) => {
                 <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
                     <h3 className="font-semibold text-md mb-3">การเข้ารับบริการ</h3>
                     {isCheckedIn ? (
-                         <p className="text-center text-green-600 font-semibold bg-green-50 p-3 rounded-lg">ลูกค้าเข้ารับบริการแล้ว</p>
+                        <p className="text-center text-green-600 font-semibold bg-green-50 p-3 rounded-lg">ลูกค้าเข้ารับบริการแล้ว</p>
                     ) : (
                         <button onClick={handleCheckIn} disabled={isUpdating || !['pending', 'confirmed', 'awaiting_confirmation'].includes(appointment.status)} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold text-lg disabled:bg-gray-300">
                             ยืนยันการเข้ารับบริการ
                         </button>
                     )}
                 </div>
-                
+
                 {/* --- Other Actions --- */}
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h3 className="font-semibold text-md mb-3">การดำเนินการอื่นๆ</h3>
-                     <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         {/* เปลี่ยนมาใช้ confirmComplete และ confirmCancel */}
                         <button onClick={confirmComplete} disabled={isUpdating || appointment.status === 'completed'} className="w-full bg-gray-600 text-white py-2 rounded-lg font-semibold disabled:bg-gray-300">เสร็จสิ้นบริการ</button>
                         <button onClick={confirmCancel} disabled={isUpdating || appointment.status === 'cancelled'} className="w-full bg-red-500 text-white py-2 rounded-lg font-semibold disabled:bg-gray-300">ยกเลิกนัด</button>
                     </div>
                 </div>
             </div>
-            
+
             <PaymentQrModal show={showQr} onClose={() => setShowQr(false)} appointment={appointment} profile={profile} />
-            
+
             {/* [4] เพิ่ม Component Modal ยืนยัน */}
             <ConfirmationModal
                 show={confirmModal.show}
@@ -252,7 +323,7 @@ const AppointmentCard = ({ appointment, onManage }) => {
         const diff = differenceInMinutes(appointmentDateTime, new Date());
         // [แก้ไขเล็กน้อย] ถ้ากำลังใช้บริการ ให้แสดงสถานะที่เหมาะสม
         if (appointment.status === 'in_progress') {
-             return { text: 'กำลังใช้บริการ', color: 'text-blue-600' };
+            return { text: 'กำลังใช้บริการ', color: 'text-blue-600' };
         }
         if (appointment.status !== 'pending' && appointment.status !== 'confirmed' && appointment.status !== 'awaiting_confirmation') {
             return { text: '', color: '' };
@@ -281,7 +352,18 @@ const AppointmentCard = ({ appointment, onManage }) => {
             <div className="flex justify-between items-start">
                 <div>
                     <p className="font-bold text-lg">{appointment.customerInfo.fullName}</p>
-                    <p className="text-sm text-gray-600">{appointment.serviceInfo.name}</p>
+                    <p className="text-sm text-gray-600 font-semibold">{appointment.serviceInfo.name}</p>
+
+                    {/* Service type details */}
+                    {appointment.serviceInfo?.serviceType === 'option-based' && appointment.serviceInfo?.selectedOptionName && (
+                        <p className="text-xs text-gray-500 mt-1">🏷️ {appointment.serviceInfo.selectedOptionName}</p>
+                    )}
+                    {appointment.serviceInfo?.serviceType === 'area-based-options' && appointment.serviceInfo?.selectedAreaOptions?.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">🔸 {appointment.serviceInfo.selectedAreaOptions.length} รายการ</p>
+                    )}
+                    {appointment.serviceInfo?.serviceType === 'multi-area' && appointment.serviceInfo?.selectedArea && (
+                        <p className="text-xs text-gray-500 mt-1">📍 {appointment.serviceInfo.selectedArea.name}</p>
+                    )}
                 </div>
                 <div className="flex flex-col items-end space-y-1">
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isPaid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -298,7 +380,7 @@ const AppointmentCard = ({ appointment, onManage }) => {
                 <p><strong>ยอดชำระ:</strong> <span className="font-bold">{appointment.paymentInfo.totalPrice?.toLocaleString()} {profile.currencySymbol}</span></p>
             </div>
             <div className="border-t pt-3 text-center">
-                 <p className={`font-semibold mb-2 ${checkInStatus.color}`}>{checkInStatus.text}</p>
+                <p className={`font-semibold mb-2 ${checkInStatus.color}`}>{checkInStatus.text}</p>
                 <button
                     onClick={() => onManage(appointment)}
                     className="w-full font-bold py-2.5 rounded-lg transition-colors bg-indigo-500 text-white hover:bg-indigo-600"
@@ -317,7 +399,7 @@ export default function CheckInPage() {
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
-    
+
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const { showToast } = useToast();
 
@@ -372,7 +454,7 @@ export default function CheckInPage() {
     const handleCloseModal = () => {
         setSelectedAppointment(null);
     };
-    
+
     const handleActionInModal = (updatedAppointment) => {
         setAppointments(prev => prev.map(app => app.id === updatedAppointment.id ? updatedAppointment : app));
         setSelectedAppointment(updatedAppointment);
@@ -387,7 +469,7 @@ export default function CheckInPage() {
         <div>
             <EmployeeHeader />
             {selectedAppointment && (
-                <ManagementModal 
+                <ManagementModal
                     appointment={selectedAppointment}
                     onClose={handleCloseModal}
                     onAction={handleActionInModal}
@@ -428,9 +510,9 @@ export default function CheckInPage() {
                     {loading && <p className="text-center">กำลังค้นหา...</p>}
                     {message && <p className="text-center text-red-500 bg-red-50 p-3 rounded-lg">{message}</p>}
                     {appointments.map(app => (
-                        <AppointmentCard 
-                            key={app.id} 
-                            appointment={app} 
+                        <AppointmentCard
+                            key={app.id}
+                            appointment={app}
                             onManage={handleOpenModal}
                         />
                     ))}

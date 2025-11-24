@@ -25,7 +25,7 @@ function GeneralInfoContent() {
     const date = searchParams.get('date');
     const time = searchParams.get('time');
     const technicianId = searchParams.get('technicianId');
-    
+
     // Legacy Params (Multi-Area)
     const areaIndex = searchParams.get('areaIndex') ? parseInt(searchParams.get('areaIndex')) : null;
     const packageIndex = searchParams.get('packageIndex') ? parseInt(searchParams.get('packageIndex')) : null;
@@ -36,6 +36,10 @@ function GeneralInfoContent() {
     const selectedOptionDuration = searchParams.get('selectedOptionDuration') ? parseInt(searchParams.get('selectedOptionDuration')) : 0;
     const selectedAreasParam = searchParams.get('selectedAreas');
     const selectedAreas = selectedAreasParam ? selectedAreasParam.split(',') : [];
+
+    // New Params (Area-Based-Options)
+    const selectedAreaOptionsParam = searchParams.get('selectedAreaOptions');
+    const selectedAreaOptions = selectedAreaOptionsParam ? JSON.parse(selectedAreaOptionsParam) : {};
 
     const [formData, setFormData] = useState({ fullName: "", phone: "", email: "", note: "" });
     const [service, setService] = useState(null);
@@ -57,7 +61,7 @@ function GeneralInfoContent() {
                     getDoc(doc(db, 'services', serviceId)),
                     getDocs(query(collection(db, "customers", profile.userId, "coupons"), where("used", "==", false)))
                 ];
-                
+
                 if (technicianId && technicianId !== 'auto-assign') {
                     promises.push(getDoc(doc(db, 'technicians', technicianId)));
                 }
@@ -73,13 +77,13 @@ function GeneralInfoContent() {
                 }
 
                 if (serviceSnap.exists()) setService(serviceSnap.data());
-                
+
                 if (technicianId === 'auto-assign') {
                     settechnician({ firstName: 'ระบบจัดให้', lastName: '', id: 'auto-assign' });
                 } else if (techniciansnap && techniciansnap.exists()) {
                     settechnician(techniciansnap.data());
                 }
-                
+
                 setAvailableCoupons(couponsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (error) {
                 console.error("Error fetching details:", error);
@@ -111,7 +115,7 @@ function GeneralInfoContent() {
                     duration = selectedPackageData.duration || 0;
                 }
             }
-        } 
+        }
         // 2. Option-Based Logic (New)
         else if (service.serviceType === 'option-based') {
             let unitPrice = selectedOptionPrice;
@@ -125,11 +129,23 @@ function GeneralInfoContent() {
                     unitDuration = option.duration;
                 }
             }
-            
+
             // สูตร: ราคาต่อหน่วย x จำนวนจุด
             const areaCount = Math.max(1, selectedAreas.length);
             base = unitPrice * areaCount;
             duration = unitDuration * areaCount;
+        }
+        // 3. Area-Based-Options Logic (Newest)
+        else if (service.serviceType === 'area-based-options') {
+            base = 0;
+            duration = 0;
+            Object.entries(selectedAreaOptions).forEach(([areaName, optIdx]) => {
+                const areaGroup = service.areaOptions?.find(g => g.areaName === areaName);
+                if (areaGroup && areaGroup.options[optIdx]) {
+                    base += Number(areaGroup.options[optIdx].price) || 0;
+                    duration += Number(areaGroup.options[optIdx].duration) || 0;
+                }
+            });
         }
 
         const addOnsPrice = (service.addOnServices || []).filter(a => selectedAddOns.includes(a.name)).reduce((sum, a) => sum + (a.price || 0), 0);
@@ -153,7 +169,7 @@ function GeneralInfoContent() {
             selectedPackage: selectedPackageData,
             totalDuration: duration + addOnsDuration
         };
-    }, [service, selectedAddOns, selectedCouponId, availableCoupons, areaIndex, packageIndex, selectedOptionName, selectedOptionPrice, selectedOptionDuration, selectedAreas]);
+    }, [service, selectedAddOns, selectedCouponId, availableCoupons, areaIndex, packageIndex, selectedOptionName, selectedOptionPrice, selectedOptionDuration, selectedAreas, selectedAreaOptions]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -191,6 +207,17 @@ function GeneralInfoContent() {
                     // Option-based
                     selectedOptionName: selectedOptionName || null,
                     selectedAreas: selectedAreas || [],
+                    // Area-based-options
+                    selectedAreaOptions: Object.entries(selectedAreaOptions).map(([areaName, optIdx]) => {
+                        const areaGroup = service.areaOptions?.find(g => g.areaName === areaName);
+                        const opt = areaGroup?.options[optIdx];
+                        return {
+                            areaName,
+                            optionName: opt?.name,
+                            price: opt?.price,
+                            duration: opt?.duration
+                        };
+                    })
                 },
                 date: date,
                 time: time,
@@ -211,6 +238,17 @@ function GeneralInfoContent() {
                     // Option-based
                     selectedOptionName: selectedOptionName || null,
                     selectedAreas: selectedAreas || [],
+                    // Area-based-options
+                    selectedAreaOptions: Object.entries(selectedAreaOptions).map(([areaName, optIdx]) => {
+                        const areaGroup = service.areaOptions?.find(g => g.areaName === areaName);
+                        const opt = areaGroup?.options[optIdx];
+                        return {
+                            areaName,
+                            optionName: opt?.name,
+                            price: opt?.price,
+                            duration: opt?.duration
+                        };
+                    })
                 },
                 paymentInfo: {
                     basePrice,
@@ -225,7 +263,7 @@ function GeneralInfoContent() {
             };
 
             const result = await createAppointmentWithSlotCheck(appointmentData);
-            
+
             if (!result.success) {
                 showToast(result.error, "error", "เกิดข้อผิดพลาด");
                 setIsSubmitting(false);
@@ -284,7 +322,7 @@ function GeneralInfoContent() {
                             <span className="text-sm font-medium text-gray-600 pt-0.5">บริการ</span>
                             <div className="text-right flex-1 pl-4">
                                 <div className="text-sm font-bold text-gray-900">{service?.serviceName}</div>
-                                
+
                                 {/* Multi-Area Display */}
                                 {selectedArea && (
                                     <div className="text-sm text-gray-600">{selectedArea.name}</div>
@@ -293,7 +331,7 @@ function GeneralInfoContent() {
                                     <div className="text-sm text-gray-600">{selectedPackage.name}</div>
                                 )}
 
-                                {/* --- แก้ไข: Option-Based Display ให้แสดงรายละเอียดการคูณ --- */}
+                                {/* Option-Based Display */}
                                 {service?.serviceType === 'option-based' && (
                                     <div className="mt-1">
                                         <div className="text-sm text-gray-800 font-medium flex justify-end items-center gap-1">
@@ -306,6 +344,23 @@ function GeneralInfoContent() {
                                                 ({selectedAreas.join(', ')})
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Area-Based-Options Display */}
+                                {service?.serviceType === 'area-based-options' && Object.keys(selectedAreaOptions).length > 0 && (
+                                    <div className="mt-1 space-y-1">
+                                        {Object.entries(selectedAreaOptions).map(([areaName, optIdx]) => {
+                                            const areaGroup = service.areaOptions?.find(g => g.areaName === areaName);
+                                            const opt = areaGroup?.options[optIdx];
+                                            if (!opt) return null;
+                                            return (
+                                                <div key={areaName} className="text-sm text-gray-600 flex justify-between items-center">
+                                                    <span>{areaName} ({opt.name})</span>
+                                                    <span className="text-xs text-gray-400 ml-2">{shopProfile.currencySymbol}{Number(opt.price).toLocaleString()}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
@@ -335,7 +390,7 @@ function GeneralInfoContent() {
                             </div>
                         )}
                     </div>
-                    
+
                     {/* Coupon Section */}
                     {availableCoupons.length > 0 && (
                         <div className="p-4 border-b border-gray-100 ">
