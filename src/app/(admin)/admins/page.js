@@ -80,18 +80,18 @@ export default function AdminsPage() {
 
   const handleAddAdmin = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.firstName || !formData.phone || !formData.email || !formData.password) {
-        showToast("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", 'error');
-        return;
+      showToast("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", 'error');
+      return;
     }
     if (formData.password.length < 6) {
-        showToast("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", 'error');
-        return;
+      showToast("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", 'error');
+      return;
     }
-    
+
     setFormLoading(true);
-    
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
@@ -114,7 +114,7 @@ export default function AdminsPage() {
       await setDoc(doc(db, 'admins', user.uid), dataToSave);
 
       showToast('เพิ่มผู้ดูแลระบบสำเร็จ!', 'success');
-      
+
       // Reset form
       setFormData({
         firstName: '',
@@ -135,8 +135,8 @@ export default function AdminsPage() {
         errorMessage = "รหัสผ่านไม่ปลอดภัย (ต้องมีอย่างน้อย 6 ตัวอักษร)";
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = "รูปแบบอีเมลไม่ถูกต้อง";
-        } else if (error.code === 'auth/invalid-credential') {
-          errorMessage = "รหัสผ่านไม่ถูกต้อง";
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = "รหัสผ่านไม่ถูกต้อง";
       }
       showToast(errorMessage, 'error');
     } finally {
@@ -153,18 +153,18 @@ export default function AdminsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto">
       <ConfirmationModal
-          show={!!adminToDelete}
-          title="ยืนยันการลบ"
-          message={`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ดูแลระบบ "${adminToDelete?.firstName}"?`}
-          onConfirm={confirmDeleteAdmin}
-          onCancel={() => setAdminToDelete(null)}
-          isProcessing={isDeleting}
+        show={!!adminToDelete}
+        title="ยืนยันการลบ"
+        message={`คุณแน่ใจหรือไม่ว่าต้องการลบผู้ดูแลระบบ "${adminToDelete?.firstName}"?`}
+        onConfirm={confirmDeleteAdmin}
+        onCancel={() => setAdminToDelete(null)}
+        isProcessing={isDeleting}
       />
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center my-6">
         <h1 className="text-3xl font-bold text-gray-800">จัดการผู้ดูแลระบบ</h1>
-        <button 
+        <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
         >
@@ -181,83 +181,83 @@ export default function AdminsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">ชื่อจริง</label>
-                <input 
-                  name="firstName" 
-                  value={formData.firstName} 
-                  onChange={handleFormChange} 
-                  required 
+                <input
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleFormChange}
+                  required
                   className="w-full mt-1 p-2 border rounded-md"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">นามสกุล</label>
-                <input 
-                  name="lastName" 
-                  value={formData.lastName} 
-                  onChange={handleFormChange} 
+                <input
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleFormChange}
                   className="w-full mt-1 p-2 border rounded-md"
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
-              <input 
-                type="tel" 
-                name="phone" 
-                value={formData.phone} 
-                onChange={handleFormChange} 
-                required 
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleFormChange}
+                required
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">อีเมล (สำหรับเข้าระบบ)</label>
-              <input 
-                type="email" 
-                name="email" 
-                value={formData.email} 
-                onChange={handleFormChange} 
-                required 
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleFormChange}
+                required
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
-              <input 
-                type="password" 
-                name="password" 
-                value={formData.password} 
-                onChange={handleFormChange} 
-                required 
-                placeholder="อย่างน้อย 6 ตัวอักษร" 
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleFormChange}
+                required
+                placeholder="อย่างน้อย 6 ตัวอักษร"
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
-              <input 
-                name="lineUserId" 
-                value={formData.lineUserId} 
-                onChange={handleFormChange} 
-                placeholder="U12345..." 
+              <input
+                name="lineUserId"
+                value={formData.lineUserId}
+                onChange={handleFormChange}
+                placeholder="U12345..."
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div className="flex gap-2">
-              <button 
-                type="submit" 
-                disabled={formLoading} 
+              <button
+                type="submit"
+                disabled={formLoading}
                 className="flex-1 bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {formLoading ? 'กำลังบันทึก...' : 'เพิ่มผู้ดูแลระบบ'}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowAddForm(false)}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
@@ -323,13 +323,13 @@ export default function AdminsPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
-                    <button 
+                    <button
                       onClick={() => window.location.href = `/admins/edit/${admin.id}`}
                       className="text-purple-600 hover:text-purple-900"
                     >
                       แก้ไข
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteAdmin(admin)}
                       className="text-red-600 hover:text-red-900"
                     >
@@ -341,7 +341,7 @@ export default function AdminsPage() {
             ))}
           </tbody>
         </table>
-        
+
         {admins.length === 0 && (
           <div className="text-center py-8">
             <p className="text-gray-500">ยังไม่มีข้อมูลผู้ดูแลระบบ</p>

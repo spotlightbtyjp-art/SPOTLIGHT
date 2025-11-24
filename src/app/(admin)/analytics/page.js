@@ -3,24 +3,55 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '@/app/lib/firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
+} from 'recharts';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, subDays, differenceInDays, isSameDay } from 'date-fns';
+import { th } from 'date-fns/locale';
 import { useProfile } from '@/context/ProfileProvider';
+
+// --- Icons ---
+const Icons = {
+    TrendingUp: () => <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
+    TrendingDown: () => <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>,
+    Calendar: () => <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+    Download: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+    Dollar: () => <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    Users: () => <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+    CheckCircle: () => <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    Star: () => <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+};
 
 // --- Helper Components ---
 
-const AnalyticsCard = ({ title, value, subtext }) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-        <p className="mt-1 text-3xl font-semibold text-gray-900">{value}</p>
-        {subtext && <p className="text-sm text-gray-500 mt-1">{subtext}</p>}
+const StatCard = ({ title, value, subtext, trend, icon: Icon, colorClass }) => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between transition-all hover:shadow-md">
+        <div>
+            <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+            <h3 className="text-3xl font-bold text-gray-900">{value}</h3>
+            {subtext && (
+                <div className="flex items-center mt-2 gap-2">
+                    {trend !== undefined && (
+                        <span className={`flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${trend >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            {trend >= 0 ? <Icons.TrendingUp /> : <Icons.TrendingDown />}
+                            <span className="ml-1">{Math.abs(trend)}%</span>
+                        </span>
+                    )}
+                    <p className="text-xs text-gray-400">{subtext}</p>
+                </div>
+            )}
+        </div>
+        <div className={`p-3 rounded-xl ${colorClass} shadow-sm`}>
+            <Icon />
+        </div>
     </div>
 );
 
-const ChartContainer = ({ title, children }) => (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">{title}</h3>
-        <div style={{ width: '100%', height: 300 }}>
+const ChartCard = ({ title, children }) => (
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 className="text-lg font-bold text-gray-800 mb-6">{title}</h3>
+        <div className="w-full h-[350px]">
             <ResponsiveContainer>
                 {children}
             </ResponsiveContainer>
@@ -32,9 +63,7 @@ const ChartContainer = ({ title, children }) => (
 
 export default function AnalyticsPage() {
     const [appointments, setAppointments] = useState([]);
-    const [customers, setCustomers] = useState([]);
     const [reviews, setReviews] = useState([]);
-    const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const { profile, loading: profileLoading } = useProfile();
     const [dateRange, setDateRange] = useState({
@@ -46,28 +75,13 @@ export default function AnalyticsPage() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const appointmentsQuery = query(collection(db, 'appointments'), orderBy('createdAt', 'desc'));
-                const customersQuery = query(collection(db, 'customers'));
-                const reviewsQuery = query(collection(db, 'reviews'));
-                const servicesQuery = query(collection(db, 'services'));
-
-                const [appointmentsSnapshot, customersSnapshot, reviewsSnapshot, servicesSnapshot] = await Promise.all([
-                    getDocs(appointmentsQuery),
-                    getDocs(customersQuery),
-                    getDocs(reviewsQuery),
-                    getDocs(servicesQuery),
+                const [appSnap, revSnap] = await Promise.all([
+                    getDocs(query(collection(db, 'appointments'), orderBy('createdAt', 'desc'))),
+                    getDocs(query(collection(db, 'reviews')))
                 ]);
 
-                const appointmentsData = appointmentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const customersData = customersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const reviewsData = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                const servicesData = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                setAppointments(appointmentsData);
-                setCustomers(customersData);
-                setReviews(reviewsData);
-                setServices(servicesData);
-
+                setAppointments(appSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                setReviews(revSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (err) {
                 console.error("Error fetching data: ", err);
             } finally {
@@ -77,246 +91,283 @@ export default function AnalyticsPage() {
         fetchData();
     }, []);
 
-    const analyticsData = useMemo(() => {
+    const analytics = useMemo(() => {
         if (loading) return null;
 
-        // กรองนัดหมายตามช่วงวันที่
-        const filteredAppointments = appointments.filter(a => {
-            const date = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            return date >= dateRange.start && date <= dateRange.end;
+        const daysDiff = differenceInDays(dateRange.end, dateRange.start) + 1;
+        const prevStart = subDays(dateRange.start, daysDiff);
+        const prevEnd = subDays(dateRange.end, daysDiff);
+
+        // Helper to filter by date range
+        const filterByDate = (data, start, end) => data.filter(item => {
+            const d = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+            return d >= start && d <= end;
         });
 
-        // แยกสถานะ
-        const completedAppointments = filteredAppointments.filter(a => a.status === 'completed');
-        const cancelledAppointments = filteredAppointments.filter(a => a.status === 'cancelled');
+        const currentApps = filterByDate(appointments, dateRange.start, dateRange.end);
+        const prevApps = filterByDate(appointments, prevStart, prevEnd);
 
-        // สร้างข้อมูลรายวันแยกสถานะ
-        const appointmentsByDay = { completed: {}, cancelled: {} };
-        completedAppointments.forEach(a => {
-            const day = format(a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt), 'yyyy-MM-dd');
-            appointmentsByDay.completed[day] = (appointmentsByDay.completed[day] || 0) + 1;
-        });
-        cancelledAppointments.forEach(a => {
-            const day = format(a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt), 'yyyy-MM-dd');
-            appointmentsByDay.cancelled[day] = (appointmentsByDay.cancelled[day] || 0) + 1;
-        });
+        // Metrics Calculation
+        const calcRevenue = (apps) => apps
+            .filter(a => a.status === 'completed' && a.paymentInfo?.paymentStatus === 'paid')
+            .reduce((sum, a) => sum + (Number(a.paymentInfo?.totalPrice) || 0), 0);
 
-        const appointmentChartData = eachDayOfInterval(dateRange).map(day => {
-            const formattedDay = format(day, 'yyyy-MM-dd');
+        const currentRevenue = calcRevenue(currentApps);
+        const prevRevenue = calcRevenue(prevApps);
+        const revenueGrowth = prevRevenue ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+
+        const currentCompleted = currentApps.filter(a => a.status === 'completed').length;
+        const prevCompleted = prevApps.filter(a => a.status === 'completed').length;
+        const completedGrowth = prevCompleted ? ((currentCompleted - prevCompleted) / prevCompleted) * 100 : 0;
+
+        // Charts Data
+        const dailyData = eachDayOfInterval({ start: dateRange.start, end: dateRange.end }).map(day => {
+            const dayApps = currentApps.filter(a => isSameDay(a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt), day));
+            const revenue = dayApps
+                .filter(a => a.status === 'completed' && a.paymentInfo?.paymentStatus === 'paid')
+                .reduce((sum, a) => sum + (Number(a.paymentInfo?.totalPrice) || 0), 0);
+
             return {
-                name: format(day, 'dd/MM'),
-                completed: appointmentsByDay.completed[formattedDay] || 0,
-                cancelled: appointmentsByDay.cancelled[formattedDay] || 0,
+                date: format(day, 'dd/MM'),
+                fullDate: format(day, 'dd MMM yyyy', { locale: th }),
+                revenue,
+                completed: dayApps.filter(a => a.status === 'completed').length,
+                cancelled: dayApps.filter(a => a.status === 'cancelled').length,
             };
         });
 
-        // รายได้เฉพาะที่สำเร็จ
-        const paidAppointments = completedAppointments.filter(a => a.paymentInfo && a.paymentInfo.paymentStatus === 'paid');
-        const revenueByDay = paidAppointments.reduce((acc, a) => {
-            const paidAt = a.paymentInfo?.paidAt?.toDate ? a.paymentInfo.paidAt.toDate() : new Date(a.paymentInfo?.paidAt);
-            const day = format(paidAt, 'yyyy-MM-dd');
-            acc[day] = (acc[day] || 0) + (a.paymentInfo?.totalPrice || 0);
-            return acc;
-        }, {});
-        const revenueChartData = eachDayOfInterval(dateRange).map(day => {
-            const formattedDay = format(day, 'yyyy-MM-dd');
-            return {
-                name: format(day, 'dd/MM'),
-                revenue: revenueByDay[formattedDay] || 0,
-            };
+        // Top Services
+        const serviceStats = {};
+        currentApps.filter(a => a.status === 'completed').forEach(a => {
+            const name = a.serviceInfo?.name || a.serviceName || 'Unknown';
+            if (!serviceStats[name]) serviceStats[name] = { count: 0, revenue: 0 };
+            serviceStats[name].count++;
+            serviceStats[name].revenue += (Number(a.paymentInfo?.totalPrice) || 0);
         });
-        const totalRevenue = paidAppointments.reduce((sum, a) => sum + (a.paymentInfo?.totalPrice || 0), 0);
 
-        // Pie chart บริการยอดนิยม (เฉพาะที่สำเร็จ)
-        const serviceTypeData = completedAppointments.reduce((acc, a) => {
-            const type = a.serviceInfo?.name || 'Unknown';
-            acc[type] = (acc[type] || 0) + 1;
-            return acc;
-        }, {});
-        const servicePieChartData = Object.keys(serviceTypeData).map(key => ({
-            name: key,
-            value: serviceTypeData[key]
-        }));
+        const topServices = Object.entries(serviceStats)
+            .map(([name, stats]) => ({ name, ...stats }))
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5);
 
-        // --- สรุปข้อมูลแต่ละบริการ ---
-        const serviceSummary = {};
-        filteredAppointments.forEach(a => {
-            const serviceName = a.serviceInfo?.name || a.serviceName || 'Unknown';
-            if (!serviceSummary[serviceName]) {
-                serviceSummary[serviceName] = {
-                    completed: 0,
-                    cancelled: 0,
-                    revenue: 0
-                };
-            }
-            if (a.status === 'completed') {
-                serviceSummary[serviceName].completed += 1;
-                if (a.paymentInfo && a.paymentInfo.paymentStatus === 'paid') {
-                    serviceSummary[serviceName].revenue += a.paymentInfo.totalPrice || 0;
-                }
-            }
-            if (a.status === 'cancelled') {
-                serviceSummary[serviceName].cancelled += 1;
-            }
+        // Top Technicians
+        const techStats = {};
+        currentApps.filter(a => a.status === 'completed' && a.technicianId).forEach(a => {
+            const name = a.technicianInfo?.firstName ? `${a.technicianInfo.firstName} ${a.technicianInfo.lastName || ''}` : 'Unknown';
+            if (!techStats[name]) techStats[name] = 0;
+            techStats[name]++;
         });
-        // ยอดรวมทุกบริการ
-        const totalServiceRevenue = Object.values(serviceSummary).reduce((sum, s) => sum + s.revenue, 0);
+        const topTechnicians = Object.entries(techStats)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
 
-        const averageRating = reviews.length > 0
-            ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(2)
-            : 'N/A';
+        // Average Rating
+        const currentReviews = filterByDate(reviews, dateRange.start, dateRange.end);
+        const avgRating = currentReviews.length
+            ? (currentReviews.reduce((sum, r) => sum + r.rating, 0) / currentReviews.length).toFixed(1)
+            : 0;
 
         return {
-            totalAppointments: filteredAppointments.length,
-            completedAppointments: completedAppointments.length,
-            cancelledAppointments: cancelledAppointments.length,
-            totalRevenue,
-            averageRating,
-            appointmentChartData,
-            revenueChartData,
-            servicePieChartData,
-            reviewCount: reviews.length,
-            serviceSummary,
-            totalServiceRevenue,
+            totalRevenue: currentRevenue,
+            revenueGrowth: Math.round(revenueGrowth),
+            totalAppointments: currentApps.length,
+            completedAppointments: currentCompleted,
+            completedGrowth: Math.round(completedGrowth),
+            avgRating,
+            reviewCount: currentReviews.length,
+            dailyData,
+            topServices,
+            topTechnicians,
+            serviceStats
         };
     }, [loading, appointments, reviews, dateRange]);
-    
+
     const exportToCSV = () => {
-        const headers = ['Appointment ID', 'Customer Name', 'Service', 'Date/Time', 'Total Price', 'Payment Status', 'Status', 'Note'];
-        const rows = appointments.map(a => {
-            const escapeCSV = (str) => `"${String(str || '').replace(/"/g, '""')}"`
-            return [
-                a.id,
-                escapeCSV(a.customerInfo?.fullName || a.customerInfo?.name || ''),
-                escapeCSV(a.serviceInfo?.name || a.serviceName || ''),
-                a.appointmentInfo?.dateTime?.toDate ? a.appointmentInfo.dateTime.toDate().toLocaleString('th-TH') : '',
-                a.paymentInfo?.totalPrice || '',
-                a.paymentInfo?.paymentStatus || '',
-                a.status || '',
-                escapeCSV(a.customerInfo?.note || a.note || '')
-            ].join(',');
-        });
-        const bom = '\uFEFF';
-        const csvContent = bom + [headers.join(','), ...rows].join('\n');
+        if (!analytics) return;
+        const headers = ['Date', 'Service', 'Customer', 'Technician', 'Price', 'Status'];
+        const rows = appointments
+            .filter(a => {
+                const d = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+                return d >= dateRange.start && d <= dateRange.end;
+            })
+            .map(a => [
+                format(a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt), 'yyyy-MM-dd HH:mm'),
+                `"${a.serviceInfo?.name || a.serviceName || ''}"`,
+                `"${a.customerInfo?.fullName || a.customerInfo?.name || ''}"`,
+                `"${a.technicianInfo?.firstName || ''} ${a.technicianInfo?.lastName || ''}"`,
+                a.paymentInfo?.totalPrice || 0,
+                a.status
+            ].join(','));
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `appointments_export_${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        link.href = url;
+        link.download = `analytics_export_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        link.click();
     };
 
     const handleDateChange = (e) => {
         const { name, value } = e.target;
-        setDateRange(prev => ({...prev, [name]: parseISO(value) }));
+        if (value) setDateRange(prev => ({ ...prev, [name]: parseISO(value) }));
     };
 
-    if (loading || profileLoading) return <div className="text-center mt-20">กำลังโหลดและวิเคราะห์ข้อมูล...</div>;
-    if (!analyticsData) return <div className="text-center mt-20">ไม่มีข้อมูลเพียงพอสำหรับการวิเคราะห์</div>;
+    if (loading || profileLoading) return <div className="flex items-center justify-center min-h-screen bg-gray-50"><div className="animate-pulse w-12 h-12 bg-gray-200 rounded-full"></div></div>;
+    if (!analytics) return <div className="text-center mt-20">ไม่มีข้อมูล</div>;
 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+    const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
     return (
-        <div className="container mx-auto p-4 md:p-8 space-y-8">
-            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
-                <h1 className="text-2xl font-bold text-slate-800">หน้าวิเคราะห์ข้อมูล</h1>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <input type="date" name="start" onChange={handleDateChange} value={format(dateRange.start, 'yyyy-MM-dd')} className="p-2 border rounded-md"/>
-                        <span>ถึง</span>
-                        <input type="date" name="end" onChange={handleDateChange} value={format(dateRange.end, 'yyyy-MM-dd')} className="p-2 border rounded-md"/>
+        <div className="min-h-screen bg-gray-50/50 p-6 md:p-10 font-sans text-gray-800">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">ภาพรวมธุรกิจ</h1>
+                        <p className="text-gray-500 mt-1">วิเคราะห์ประสิทธิภาพและแนวโน้มของร้าน</p>
                     </div>
-                    <button 
-                        onClick={exportToCSV}
-                        className="bg-green-600 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-green-700"
-                    >
-                        Export to CSV
-                    </button>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <AnalyticsCard title="ยอดนัดหมายทั้งหมด" value={analyticsData.totalAppointments.toLocaleString()} subtext={`ในช่วงเวลาที่เลือก`} />
-                <AnalyticsCard 
-                    title="นัดหมายสำเร็จ/ยกเลิก"
-                    value={`${analyticsData.completedAppointments.toLocaleString()} / ${analyticsData.cancelledAppointments.toLocaleString()}`}
-                    subtext={`สำเร็จ / ยกเลิก`}
-                />
-                <AnalyticsCard title="รายได้รวม" value={`${analyticsData.totalRevenue.toLocaleString()}`} subtext={profile.currencySymbol} />
-                <AnalyticsCard title="คะแนนรีวิวเฉลี่ย" value={`${analyticsData.averageRating} ★`} subtext={`จาก ${analyticsData.reviewCount} รีวิว`} />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* กราฟ 2 ช่อง */}
-                <div className="grid grid-cols-1 gap-6">
-                    <ChartContainer title="ยอดนัดหมายรายวัน (แยกสถานะ)">
-                        <BarChart data={analyticsData.appointmentChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="completed" fill="#4ade80" name="สำเร็จ" />
-                            <Bar dataKey="cancelled" fill="#f87171" name="ยกเลิก" />
-                        </BarChart>
-                    </ChartContainer>
-
-                    <ChartContainer title={`รายได้รายวัน (${profile.currencySymbol})`}>
-                        <LineChart data={analyticsData.revenueChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip formatter={(value) => value.toLocaleString()} />
-                            <Legend />
-                            <Line type="monotone" dataKey="revenue" stroke="#82ca9d" name="รายได้"/>
-                        </LineChart>
-                    </ChartContainer>
-
-                    <ChartContainer title="บริการยอดนิยม">
-                        <PieChart>
-                            <Pie data={analyticsData.servicePieChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                                {analyticsData.servicePieChartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ChartContainer>
+                    <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-2 px-2">
+                            <Icons.Calendar />
+                            <input type="date" name="start" value={format(dateRange.start, 'yyyy-MM-dd')} onChange={handleDateChange} className="text-sm border-none focus:ring-0 text-gray-600 bg-transparent outline-none" />
+                            <span className="text-gray-400">-</span>
+                            <input type="date" name="end" value={format(dateRange.end, 'yyyy-MM-dd')} onChange={handleDateChange} className="text-sm border-none focus:ring-0 text-gray-600 bg-transparent outline-none" />
+                        </div>
+                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
+                        <button onClick={exportToCSV} className="flex items-center gap-2 bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                            <Icons.Download /> Export CSV
+                        </button>
+                    </div>
                 </div>
 
-                {/* ตารางสรุปบริการ */}
-                <div className="bg-white p-8 rounded-xl shadow-lg flex flex-col items-start h-full min-h-[300px]">
-                    <h3 className="text-xl font-bold text-gray-800 mb-6">สรุปบริการ</h3>
-                    <table className="w-full text-sm mb-6">
-                        <thead>
-                            <tr className="bg-gray-100">
-                                <th className="py-2 px-2 text-left">บริการ</th>
-                                <th className="py-2 px-2 text-center">จอง</th>
-                                <th className="py-2 px-2 text-center">ยกเลิก</th>
-                                <th className="py-2 px-2 text-right">ยอดเงิน</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.entries(analyticsData.serviceSummary).map(([service, info]) => (
-                                <tr key={service} className="border-b">
-                                    <td className="py-2 px-2 font-medium text-slate-800">{service}</td>
-                                    <td className="py-2 px-2 text-center text-green-600 font-bold">{info.completed}</td>
-                                    <td className="py-2 px-2 text-center text-red-500 font-bold">{info.cancelled}</td>
-                                    <td className="py-2 px-2 text-right text-blue-700 font-bold">{info.revenue.toLocaleString()} {profile.currencySymbol}</td>
-                                </tr>
+                {/* Key Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard
+                        title="รายได้รวม"
+                        value={`${analytics.totalRevenue.toLocaleString()} ${profile.currencySymbol}`}
+                        trend={analytics.revenueGrowth}
+                        subtext="เทียบกับช่วงก่อนหน้า"
+                        icon={Icons.Dollar}
+                        colorClass="bg-blue-500 text-white"
+                    />
+                    <StatCard
+                        title="งานที่สำเร็จ"
+                        value={analytics.completedAppointments}
+                        trend={analytics.completedGrowth}
+                        subtext="งานที่ให้บริการเสร็จสิ้น"
+                        icon={Icons.CheckCircle}
+                        colorClass="bg-green-500 text-white"
+                    />
+                    <StatCard
+                        title="ลูกค้าทั้งหมด"
+                        value={analytics.totalAppointments}
+                        subtext="รวมทุกสถานะการจอง"
+                        icon={Icons.Users}
+                        colorClass="bg-purple-500 text-white"
+                    />
+                    <StatCard
+                        title="ความพึงพอใจ"
+                        value={analytics.avgRating}
+                        subtext={`จาก ${analytics.reviewCount} รีวิว`}
+                        icon={Icons.Star}
+                        colorClass="bg-yellow-400 text-white"
+                    />
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                        <ChartCard title="แนวโน้มรายได้ (Revenue Trend)">
+                            <AreaChart data={analytics.dailyData}>
+                                <defs>
+                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                                <Tooltip
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    formatter={(value) => [`${value.toLocaleString()} ${profile.currencySymbol}`, 'รายได้']}
+                                />
+                                <Area type="monotone" dataKey="revenue" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                            </AreaChart>
+                        </ChartCard>
+                    </div>
+                    <div>
+                        <ChartCard title="สัดส่วนบริการ (Top Services)">
+                            <PieChart>
+                                <Pie
+                                    data={analytics.topServices}
+                                    dataKey="revenue"
+                                    nameKey="name"
+                                    cx="50%" cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                >
+                                    {analytics.topServices.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                            </PieChart>
+                        </ChartCard>
+                    </div>
+                </div>
+
+                {/* Detailed Stats */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top Technicians */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">ช่างยอดนิยม (Top Technicians)</h3>
+                        <div className="space-y-4">
+                            {analytics.topTechnicians.map((tech, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                            {idx + 1}
+                                        </div>
+                                        <span className="font-medium text-gray-700">{tech.name}</span>
+                                    </div>
+                                    <span className="font-bold text-gray-900">{tech.count} งาน</span>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
-                    <div className="font-bold text-lg text-blue-700 mt-2 text-center">ยอดรวมทั้งหมด: {analyticsData.totalServiceRevenue.toLocaleString()} {profile.currencySymbol}</div>
+                            {analytics.topTechnicians.length === 0 && <p className="text-gray-400 text-center py-4">ไม่มีข้อมูลช่าง</p>}
+                        </div>
+                    </div>
+
+                    {/* Service Performance Table */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <h3 className="text-lg font-bold text-gray-800 mb-4">ประสิทธิภาพบริการ</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-gray-50 text-gray-500 font-medium">
+                                    <tr>
+                                        <th className="px-4 py-3 rounded-l-lg">บริการ</th>
+                                        <th className="px-4 py-3 text-center">จำนวน</th>
+                                        <th className="px-4 py-3 text-right rounded-r-lg">รายได้</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {analytics.topServices.map((service, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-4 py-3 font-medium text-gray-800">{service.name}</td>
+                                            <td className="px-4 py-3 text-center text-gray-600">{service.count}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-indigo-600">{service.revenue.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
-

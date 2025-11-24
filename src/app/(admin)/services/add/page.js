@@ -7,132 +7,62 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/app/components/Toast';
 import { useProfile } from '@/context/ProfileProvider';
 
+// --- Icons ---
+const Icons = {
+  ArrowLeft: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>,
+  Tag: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>,
+  Dollar: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  Clock: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  Image: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+  Save: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>,
+  Plus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>,
+  Trash: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+};
+
 export default function AddServicePage() {
   const [serviceType, setServiceType] = useState('single');
   const [formData, setFormData] = useState({
-    serviceName: '',
-    price: '',
-    duration: '',
-    imageUrl: '',
-    details: '',
-    completionNote: '',
-    addOnServices: [],
-    // Option-Based Data
-    selectableAreas: [], 
-    serviceOptions: []   
+    serviceName: '', price: '', duration: '', imageUrl: '', details: '', completionNote: '',
+    addOnServices: [], selectableAreas: [], serviceOptions: []
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { showToast } = useToast();
   const { profile } = useProfile();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // --- Add-on Handlers ---
+  // --- Handlers ---
   const handleAddOnChange = (idx, field, value) => {
-    setFormData(prev => {
-      const addOnServices = [...(prev.addOnServices || [])];
-      addOnServices[idx][field] = value;
-      return { ...prev, addOnServices };
-    });
+    const list = [...formData.addOnServices]; list[idx][field] = value;
+    setFormData(prev => ({ ...prev, addOnServices: list }));
   };
+  const handleAddAddOn = () => setFormData(prev => ({ ...prev, addOnServices: [...prev.addOnServices, { name: '', price: '', duration: '' }] }));
+  const handleRemoveAddOn = (idx) => setFormData(prev => ({ ...prev, addOnServices: prev.addOnServices.filter((_, i) => i !== idx) }));
 
-  const handleAddAddOn = () => {
-    setFormData(prev => ({
-      ...prev,
-      addOnServices: [...(prev.addOnServices || []), { name: '', price: '', duration: '' }]
-    }));
-  };
-
-  const handleRemoveAddOn = (idx) => {
-    setFormData(prev => {
-      const addOnServices = [...(prev.addOnServices || [])];
-      addOnServices.splice(idx, 1);
-      return { ...prev, addOnServices };
-    });
-  };
-
-  // --- Option-Based Handlers (Selectable Areas) ---
-  const handleAddSelectableArea = () => {
-    setFormData(prev => ({
-      ...prev,
-      selectableAreas: [...(prev.selectableAreas || []), { name: '' }]
-    }));
-  };
-
-  const handleRemoveSelectableArea = (idx) => {
-    setFormData(prev => {
-      const list = [...(prev.selectableAreas || [])];
-      list.splice(idx, 1);
-      return { ...prev, selectableAreas: list };
-    });
-  };
-
+  const handleAddSelectableArea = () => setFormData(prev => ({ ...prev, selectableAreas: [...prev.selectableAreas, { name: '' }] }));
+  const handleRemoveSelectableArea = (idx) => setFormData(prev => ({ ...prev, selectableAreas: prev.selectableAreas.filter((_, i) => i !== idx) }));
   const handleSelectableAreaChange = (idx, value) => {
-    setFormData(prev => {
-      const list = [...(prev.selectableAreas || [])];
-      list[idx].name = value;
-      return { ...prev, selectableAreas: list };
-    });
+    const list = [...formData.selectableAreas]; list[idx].name = value;
+    setFormData(prev => ({ ...prev, selectableAreas: list }));
   };
 
-  // --- Option-Based Handlers (Service Options) ---
-  const handleAddServiceOption = () => {
-    setFormData(prev => ({
-      ...prev,
-      serviceOptions: [...(prev.serviceOptions || []), { name: '', duration: '', price: '' }]
-    }));
-  };
-
-  const handleRemoveServiceOption = (idx) => {
-    setFormData(prev => {
-      const list = [...(prev.serviceOptions || [])];
-      list.splice(idx, 1);
-      return { ...prev, serviceOptions: list };
-    });
-  };
-
+  const handleAddServiceOption = () => setFormData(prev => ({ ...prev, serviceOptions: [...prev.serviceOptions, { name: '', duration: '', price: '' }] }));
+  const handleRemoveServiceOption = (idx) => setFormData(prev => ({ ...prev, serviceOptions: prev.serviceOptions.filter((_, i) => i !== idx) }));
   const handleServiceOptionChange = (idx, field, value) => {
-    setFormData(prev => {
-      const list = [...(prev.serviceOptions || [])];
-      list[idx][field] = value;
-      return { ...prev, serviceOptions: list };
-    });
+    const list = [...formData.serviceOptions]; list[idx][field] = value;
+    setFormData(prev => ({ ...prev, serviceOptions: list }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.serviceName) {
-      showToast("กรุณากรอกชื่อบริการ", "error");
-      return;
-    }
+    if (!formData.serviceName) return showToast("กรุณากรอกชื่อบริการ", "error");
 
-    if (serviceType === 'single') {
-      if (!formData.price || !formData.duration) {
-        showToast("กรุณากรอกราคาและระยะเวลา", "error");
-        return;
-      }
-    } else if (serviceType === 'option-based') {
-      if (!formData.serviceOptions?.length || !formData.selectableAreas?.length) {
-        showToast("กรุณากรอกพื้นที่ที่เลือกได้ และตัวเลือกแพ็กเกจอย่างน้อย 1 รายการ", "error");
-        return;
-      }
-      for (const opt of formData.serviceOptions) {
-        if (!opt.name || !opt.price || !opt.duration) {
-            showToast("กรุณากรอกข้อมูลแพ็กเกจให้ครบ (ชื่อ, ราคา, เวลา)", "error");
-            return;
-        }
-      }
-      for (const area of formData.selectableAreas) {
-          if (!area.name) {
-              showToast("กรุณากรอกชื่อพื้นที่ให้ครบ", "error");
-              return;
-          }
-      }
+    if (serviceType === 'single' && (!formData.price || !formData.duration)) {
+      return showToast("กรุณากรอกราคาและระยะเวลา", "error");
+    }
+    if (serviceType === 'option-based' && (!formData.serviceOptions.length || !formData.selectableAreas.length)) {
+      return showToast("กรุณากรอกพื้นที่และตัวเลือกอย่างน้อย 1 รายการ", "error");
     }
 
     setLoading(true);
@@ -142,7 +72,7 @@ export default function AddServicePage() {
         imageUrl: formData.imageUrl || '',
         details: formData.details || '',
         completionNote: formData.completionNote?.trim() || '',
-        addOnServices: (formData.addOnServices || []).map(a => ({ ...a, price: Number(a.price) || 0, duration: Number(a.duration) || 0 })),
+        addOnServices: formData.addOnServices.map(a => ({ ...a, price: Number(a.price) || 0, duration: Number(a.duration) || 0 })),
         serviceType,
         status: 'available',
         createdAt: serverTimestamp(),
@@ -151,25 +81,17 @@ export default function AddServicePage() {
       if (serviceType === 'single') {
         dataToSave.price = Number(formData.price) || 0;
         dataToSave.duration = Number(formData.duration) || 0;
-      } else if (serviceType === 'option-based') {
+      } else {
         dataToSave.selectableAreas = formData.selectableAreas.map(a => a.name);
-        dataToSave.serviceOptions = formData.serviceOptions.map(opt => ({
-            name: opt.name,
-            price: Number(opt.price) || 0,
-            duration: Number(opt.duration) || 0
-        }));
-        // Set min price/duration for display sorting
-        const minPrice = Math.min(...dataToSave.serviceOptions.map(o => o.price));
-        const minDuration = Math.min(...dataToSave.serviceOptions.map(o => o.duration));
-        dataToSave.price = minPrice;
-        dataToSave.duration = minDuration;
+        dataToSave.serviceOptions = formData.serviceOptions.map(opt => ({ name: opt.name, price: Number(opt.price) || 0, duration: Number(opt.duration) || 0 }));
+        dataToSave.price = Math.min(...dataToSave.serviceOptions.map(o => o.price));
+        dataToSave.duration = Math.min(...dataToSave.serviceOptions.map(o => o.duration));
       }
 
       await addDoc(collection(db, "services"), dataToSave);
       showToast("เพิ่มบริการใหม่สำเร็จ!", "success");
       router.push('/services');
     } catch (error) {
-      console.error("Error adding document: ", error);
       showToast("เกิดข้อผิดพลาด: " + error.message, "error");
     } finally {
       setLoading(false);
@@ -177,166 +99,140 @@ export default function AddServicePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">
-      <h1 className="text-2xl font-bold mb-6">เพิ่มบริการใหม่</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">ประเภทบริการ</label>
-          <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full mt-1 p-2 border rounded-md">
-            <option value="single">บริการเดี่ยว (ราคาและระยะเวลาคงที่)</option>
-            <option value="option-based">บริการเลือกพื้นที่ + ตัวเลือก (เช่น เลือกจุด + เลือกไซส์)</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">ชื่อบริการ</label>
-          <input name="serviceName" value={formData.serviceName} onChange={handleChange} placeholder="เช่น เลเซอร์, นวดสปา" required className="w-full mt-1 p-2 border rounded-md" />
-        </div>
-
-        {/* --- FORM: SINGLE --- */}
-        {serviceType === 'single' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">ราคา ({profile.currencySymbol})</label>
-                <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="200" required className="w-full mt-1 p-2 border rounded-md" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">ระยะเวลา (นาที)</label>
-                <input type="number" name="duration" value={formData.duration} onChange={handleChange} placeholder="60" required className="w-full mt-1 p-2 border rounded-md" />
-              </div>
-            </div>
-        )}
-
-        {/* --- FORM: OPTION-BASED --- */}
-        {serviceType === 'option-based' && (
-          <div className="space-y-6 border-t pt-4">
-             {/* 1. Selectable Areas */}
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">1. พื้นที่ที่ลูกค้าเลือกได้ (Checkbox)</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {(formData.selectableAreas || []).map((area, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                             <span className="text-gray-400">□</span>
-                             <input 
-                                type="text" 
-                                placeholder="ชื่อพื้นที่ (เช่น หน้าท้อง)" 
-                                value={area.name} 
-                                onChange={(e) => handleSelectableAreaChange(idx, e.target.value)}
-                                className="flex-1 p-2 border rounded-md"
-                             />
-                             <button type="button" onClick={() => handleRemoveSelectableArea(idx)} className="text-red-500 px-2">ลบ</button>
-                        </div>
-                    ))}
-                </div>
-                <button type="button" onClick={handleAddSelectableArea} className="mt-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded-md">
-                    + เพิ่มพื้นที่
-                </button>
-             </div>
-
-             {/* 2. Service Options */}
-             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">2. ตัวเลือกราคาและเวลา (Option)</label>
-                <div className="space-y-3">
-                    {(formData.serviceOptions || []).map((opt, idx) => (
-                        <div key={idx} className="flex flex-wrap items-center gap-2 p-3 border rounded-lg bg-gray-50">
-                            <span className="text-gray-400">○</span>
-                            <div className="flex-1 min-w-[150px]">
-                                <label className="text-xs text-gray-500 block">ชื่อ Option (เช่น Size S)</label>
-                                <input 
-                                    type="text" 
-                                    value={opt.name} 
-                                    onChange={(e) => handleServiceOptionChange(idx, 'name', e.target.value)}
-                                    className="w-full p-2 border rounded-md"
-                                    placeholder="Size S"
-                                />
-                            </div>
-                            <div className="w-24">
-                                <label className="text-xs text-gray-500 block">นาที/จุด</label>
-                                <input 
-                                    type="number" 
-                                    value={opt.duration} 
-                                    onChange={(e) => handleServiceOptionChange(idx, 'duration', e.target.value)}
-                                    className="w-full p-2 border rounded-md"
-                                    placeholder="30"
-                                />
-                            </div>
-                            <div className="w-28">
-                                <label className="text-xs text-gray-500 block">ราคา/จุด</label>
-                                <input 
-                                    type="number" 
-                                    value={opt.price} 
-                                    onChange={(e) => handleServiceOptionChange(idx, 'price', e.target.value)}
-                                    className="w-full p-2 border rounded-md"
-                                    placeholder="5000"
-                                />
-                            </div>
-                            <button type="button" onClick={() => handleRemoveServiceOption(idx)} className="text-red-500 px-2 mt-4">ลบ</button>
-                        </div>
-                    ))}
-                </div>
-                <button type="button" onClick={handleAddServiceOption} className="mt-2 w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-md border border-indigo-200 border-dashed">
-                    + เพิ่ม Option (เช่น S, M, XL)
-                </button>
-             </div>
+    <div className="min-h-screen bg-gray-50/50 p-6 md:p-10 font-sans text-gray-800">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <button onClick={() => router.back()} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+            <Icons.ArrowLeft />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">เพิ่มบริการใหม่</h1>
+            <p className="text-gray-500 text-sm mt-1">สร้างรายการบริการและกำหนดราคา</p>
           </div>
-        )}
+        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">URL รูปภาพ</label>
-          <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="https://example.com/image.png" className="w-full mt-1 p-2 border rounded-md" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">รายละเอียดเพิ่มเติม</label>
-          <textarea name="details" value={formData.details} onChange={handleChange} rows="3" placeholder="รายละเอียดบริการ เช่น ใช้ผลิตภัณฑ์อะไร ฯลฯ" className="w-full mt-1 p-2 border rounded-md"></textarea>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">ข้อความหลังบริการเสร็จ</label>
-          <textarea 
-            name="completionNote" 
-            value={formData.completionNote} 
-            onChange={handleChange} 
-            rows="2" 
-            placeholder="ข้อความที่จะส่งให้ลูกค้าเมื่อบริการเสร็จสิ้น" 
-            className="w-full mt-1 p-2 border rounded-md"
-          />
-          <div className="text-xs text-gray-500 mt-1">{formData.completionNote.length}/200 ตัวอักษร</div>
-        </div>
-        
-        {/* Add Ons */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">บริการเสริม</label>
-          {(formData.addOnServices || []).map((addOn, idx) => (
-            <div key={idx} className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="ชื่อบริการเสริม"
-                value={addOn.name}
-                onChange={e => handleAddOnChange(idx, 'name', e.target.value)}
-                className="flex-1 p-2 border rounded-md"
-              />
-              <input
-                type="number"
-                placeholder="ราคา"
-                value={addOn.price}
-                onChange={e => handleAddOnChange(idx, 'price', e.target.value)}
-                className="w-28 p-2 border rounded-md"
-              />
-              <input
-                type="number"
-                placeholder="ระยะเวลา"
-                value={addOn.duration}
-                onChange={e => handleAddOnChange(idx, 'duration', e.target.value)}
-                className="w-32 p-2 border rounded-md"
-              />
-              <button type="button" onClick={() => handleRemoveAddOn(idx)} className="text-red-500 px-2">ลบ</button>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Main Info Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-4 mb-6">ข้อมูลทั่วไป</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">ประเภทบริการ</label>
+                <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white">
+                  <option value="single">บริการเดี่ยว (ราคาคงที่)</option>
+                  <option value="option-based">บริการแบบเลือกพื้นที่ + ตัวเลือก</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Icons.Tag /> ชื่อบริการ <span className="text-red-500">*</span>
+                </label>
+                <input name="serviceName" value={formData.serviceName} onChange={handleChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="เช่น เลเซอร์, นวดสปา" />
+              </div>
             </div>
-          ))}
-          <button type="button" onClick={handleAddAddOn} className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md mt-2">+ เพิ่มบริการเสริม</button>
-        </div>
 
-        <button type="submit" disabled={loading} className="w-full bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400">
-          {loading ? 'กำลังบันทึก...' : 'บันทึกข้อมูลบริการ'}
-        </button>
-      </form>
+            {serviceType === 'single' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <Icons.Dollar /> ราคา ({profile.currencySymbol}) <span className="text-red-500">*</span>
+                  </label>
+                  <input type="number" name="price" value={formData.price} onChange={handleChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="0" />
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <Icons.Clock /> ระยะเวลา (นาที) <span className="text-red-500">*</span>
+                  </label>
+                  <input type="number" name="duration" value={formData.duration} onChange={handleChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="60" />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-8 bg-gray-50 rounded-xl p-6 border border-gray-200">
+                {/* Selectable Areas */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-3">1. พื้นที่ที่เลือกได้ (Selectable Areas)</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {formData.selectableAreas.map((area, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input type="text" value={area.name} onChange={(e) => handleSelectableAreaChange(idx, e.target.value)} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="ชื่อพื้นที่ (เช่น หน้าท้อง)" />
+                        <button type="button" onClick={() => handleRemoveSelectableArea(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Icons.Trash /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={handleAddSelectableArea} className="mt-3 text-sm text-indigo-600 font-medium hover:text-indigo-800 flex items-center gap-1">+ เพิ่มพื้นที่</button>
+                </div>
+
+                {/* Service Options */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-3">2. ตัวเลือกแพ็กเกจ (Options)</label>
+                  <div className="space-y-3">
+                    {formData.serviceOptions.map((opt, idx) => (
+                      <div key={idx} className="flex flex-wrap items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <input type="text" value={opt.name} onChange={(e) => handleServiceOptionChange(idx, 'name', e.target.value)} className="flex-1 min-w-[120px] px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="ชื่อ (เช่น Size S)" />
+                        <input type="number" value={opt.duration} onChange={(e) => handleServiceOptionChange(idx, 'duration', e.target.value)} className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="นาที" />
+                        <input type="number" value={opt.price} onChange={(e) => handleServiceOptionChange(idx, 'price', e.target.value)} className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="ราคา" />
+                        <button type="button" onClick={() => handleRemoveServiceOption(idx)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><Icons.Trash /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={handleAddServiceOption} className="mt-3 w-full py-2 border-2 border-dashed border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 font-medium transition-colors flex items-center justify-center gap-2">
+                    <Icons.Plus /> เพิ่มตัวเลือก
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Details Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-4 mb-6">รายละเอียดเพิ่มเติม</h2>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700"><Icons.Image /> URL รูปภาพ</label>
+                <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="https://..." />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">รายละเอียดบริการ</label>
+                <textarea name="details" value={formData.details} onChange={handleChange} rows="3" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="รายละเอียดบริการ..."></textarea>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">ข้อความหลังจบงาน (Completion Note)</label>
+                <textarea name="completionNote" value={formData.completionNote} onChange={handleChange} rows="2" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="ข้อความที่จะส่งให้ลูกค้า..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          {/* Add-ons Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">บริการเสริม (Add-ons)</h2>
+              <button type="button" onClick={handleAddAddOn} className="text-sm bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-black transition-colors flex items-center gap-1"><Icons.Plus /> เพิ่ม</button>
+            </div>
+            <div className="space-y-3">
+              {formData.addOnServices.length === 0 && <p className="text-gray-400 text-sm text-center py-4">ยังไม่มีบริการเสริม</p>}
+              {formData.addOnServices.map((addOn, idx) => (
+                <div key={idx} className="flex flex-col md:flex-row gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <input type="text" value={addOn.name} onChange={e => handleAddOnChange(idx, 'name', e.target.value)} className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="ชื่อบริการเสริม" />
+                  <div className="flex gap-3">
+                    <input type="number" value={addOn.price} onChange={e => handleAddOnChange(idx, 'price', e.target.value)} className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="ราคา" />
+                    <input type="number" value={addOn.duration} onChange={e => handleAddOnChange(idx, 'duration', e.target.value)} className="w-24 px-3 py-2 border border-gray-200 rounded-lg text-sm" placeholder="นาที" />
+                    <button type="button" onClick={() => handleRemoveAddOn(idx)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg"><Icons.Trash /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-3 pt-4">
+            <button type="button" onClick={() => router.back()} className="px-6 py-2.5 border border-gray-200 text-gray-600 font-medium rounded-xl hover:bg-gray-50 transition-colors">ยกเลิก</button>
+            <button type="submit" disabled={loading} className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 hover:bg-black text-white font-medium rounded-xl shadow-lg shadow-gray-200 transition-all transform hover:scale-[1.02] disabled:opacity-50">
+              {loading ? 'กำลังบันทึก...' : <><Icons.Save /> บันทึกข้อมูล</>}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

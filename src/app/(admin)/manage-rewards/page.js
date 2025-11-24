@@ -51,11 +51,11 @@ export default function AdminRewardsPage() {
             setRewardToDelete(null);
         }
     };
-    
+
     if (loading || profileLoading) return <div className="text-center mt-20">กำลังโหลดข้อมูลของรางวัล...</div>;
 
     return (
-        <div className="container mx-auto p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
             <ConfirmationModal
                 show={!!rewardToDelete}
                 title="ยืนยันการลบ"
@@ -64,10 +64,10 @@ export default function AdminRewardsPage() {
                 onCancel={() => setRewardToDelete(null)}
                 isProcessing={isDeleting}
             />
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center my-6">
                 <h1 className="text-2xl font-bold text-slate-800">จัดการของรางวัล</h1>
                 <Link href="/manage-rewards/add" className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow hover:bg-slate-700">
-                  + เพิ่มของรางวัลใหม่
+                    + เพิ่มของรางวัลใหม่
                 </Link>
             </div>
 
@@ -84,7 +84,7 @@ export default function AdminRewardsPage() {
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t">
-                             <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-center">
                                 <p className="text-xl font-bold text-gray-800">{reward.pointsRequired} <span className="text-sm font-normal text-gray-500">คะแนน</span></p>
                                 <button
                                     onClick={() => handleDelete(reward)}
@@ -96,7 +96,7 @@ export default function AdminRewardsPage() {
                         </div>
                     </div>
                 ))}
-                 {rewards.length === 0 && <p className="col-span-full text-center text-gray-500">ยังไม่มีของรางวัลในระบบ</p>}
+                {rewards.length === 0 && <p className="col-span-full text-center text-gray-500">ยังไม่มีของรางวัลในระบบ</p>}
             </div>
         </div>
     );

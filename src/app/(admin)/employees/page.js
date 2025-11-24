@@ -11,15 +11,15 @@ import { ConfirmationModal } from '@/app/components/common/NotificationComponent
 
 // Helper Component: StatusBadge
 const StatusBadge = ({ status }) => {
-    let text = '';
-    let colorClasses = '';
-    switch (status) {
-        case 'available': text = 'พร้อมทำงาน'; colorClasses = 'bg-green-100 text-green-800'; break;
-        case 'on_leave': text = 'ลาพัก'; colorClasses = 'bg-yellow-100 text-yellow-800'; break;
-        case 'suspended': text = 'พักงาน'; colorClasses = 'bg-red-100 text-red-800'; break;
-        default: text = status || 'ไม่ระบุ'; colorClasses = 'bg-gray-100 text-gray-700';
-    }
-    return <span className={`px-2 py-1 text-xs font-semibold rounded-full ${colorClasses}`}>{text}</span>;
+  let text = '';
+  let colorClasses = '';
+  switch (status) {
+    case 'available': text = 'พร้อมทำงาน'; colorClasses = 'bg-green-100 text-green-800'; break;
+    case 'on_leave': text = 'ลาพัก'; colorClasses = 'bg-yellow-100 text-yellow-800'; break;
+    case 'suspended': text = 'พักงาน'; colorClasses = 'bg-red-100 text-red-800'; break;
+    default: text = status || 'ไม่ระบุ'; colorClasses = 'bg-gray-100 text-gray-700';
+  }
+  return <span className={`px-2 py-1 text-xs font-semibold rounded-full ${colorClasses}`}>{text}</span>;
 };
 
 export default function EmployeesPage() {
@@ -109,18 +109,18 @@ export default function EmployeesPage() {
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.firstName || !formData.phone || !formData.email || !formData.password) {
-        showToast("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", 'error');
-        return;
+      showToast("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน", 'error');
+      return;
     }
     if (formData.password.length < 6) {
-        showToast("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", 'error');
-        return;
+      showToast("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", 'error');
+      return;
     }
-    
+
     setFormLoading(true);
-    
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
@@ -148,7 +148,7 @@ export default function EmployeesPage() {
       await setDoc(doc(db, targetCollection, user.uid), dataToSave);
 
       showToast(`เพิ่ม${formData.role === 'admin' ? 'ผู้ดูแลระบบ' : 'พนักงาน'}สำเร็จ!`, 'success');
-      
+
       // Reset form
       setFormData({
         firstName: '',
@@ -187,18 +187,18 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto">
       <ConfirmationModal
-          show={!!employeeToDelete}
-          title="ยืนยันการลบ"
-          message={`คุณแน่ใจหรือไม่ว่าต้องการลบพนักงาน "${employeeToDelete?.firstName}"?`}
-          onConfirm={confirmDeleteEmployee}
-          onCancel={() => setEmployeeToDelete(null)}
-          isProcessing={isDeleting}
+        show={!!employeeToDelete}
+        title="ยืนยันการลบ"
+        message={`คุณแน่ใจหรือไม่ว่าต้องการลบพนักงาน "${employeeToDelete?.firstName}"?`}
+        onConfirm={confirmDeleteEmployee}
+        onCancel={() => setEmployeeToDelete(null)}
+        isProcessing={isDeleting}
       />
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center my-6">
         <h1 className="text-3xl font-bold text-gray-800">จัดการพนักงาน</h1>
-        <button 
+        <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
         >
@@ -215,32 +215,32 @@ export default function EmployeesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">ชื่อจริง</label>
-                <input 
-                  name="firstName" 
-                  value={formData.firstName} 
-                  onChange={handleFormChange} 
-                  required 
+                <input
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleFormChange}
+                  required
                   className="w-full mt-1 p-2 border rounded-md"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">นามสกุล</label>
-                <input 
-                  name="lastName" 
-                  value={formData.lastName} 
-                  onChange={handleFormChange} 
+                <input
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleFormChange}
                   className="w-full mt-1 p-2 border rounded-md"
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">ตำแหน่ง</label>
-                <select 
-                  name="role" 
-                  value={formData.role} 
-                  onChange={handleFormChange} 
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleFormChange}
                   className="w-full mt-1 p-2 border rounded-md bg-white"
                 >
                   <option value="employee">พนักงาน</option>
@@ -250,10 +250,10 @@ export default function EmployeesPage() {
               {formData.role === 'employee' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">สถานะ</label>
-                  <select 
-                    name="status" 
-                    value={formData.status} 
-                    onChange={handleFormChange} 
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleFormChange}
                     className="w-full mt-1 p-2 border rounded-md bg-white"
                   >
                     <option value="available">พร้อมทำงาน</option>
@@ -263,65 +263,65 @@ export default function EmployeesPage() {
                 </div>
               )}
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์</label>
-              <input 
-                type="tel" 
-                name="phone" 
-                value={formData.phone} 
-                onChange={handleFormChange} 
-                required 
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleFormChange}
+                required
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">อีเมล (สำหรับเข้าระบบ)</label>
-              <input 
-                type="email" 
-                name="email" 
-                value={formData.email} 
-                onChange={handleFormChange} 
-                required 
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleFormChange}
+                required
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
-              <input 
-                type="password" 
-                name="password" 
-                value={formData.password} 
-                onChange={handleFormChange} 
-                required 
-                placeholder="อย่างน้อย 6 ตัวอักษร" 
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleFormChange}
+                required
+                placeholder="อย่างน้อย 6 ตัวอักษร"
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">LINE User ID (ถ้ามี)</label>
-              <input 
-                name="lineUserId" 
-                value={formData.lineUserId} 
-                onChange={handleFormChange} 
-                placeholder="U12345..." 
+              <input
+                name="lineUserId"
+                value={formData.lineUserId}
+                onChange={handleFormChange}
+                placeholder="U12345..."
                 className="w-full mt-1 p-2 border rounded-md"
               />
             </div>
-            
+
             <div className="flex gap-2">
-              <button 
-                type="submit" 
-                disabled={formLoading} 
+              <button
+                type="submit"
+                disabled={formLoading}
                 className="flex-1 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {formLoading ? 'กำลังบันทึก...' : 'เพิ่มพนักงาน'}
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowAddForm(false)}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
@@ -380,8 +380,8 @@ export default function EmployeesPage() {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <select 
-                    value={employee.status} 
+                  <select
+                    value={employee.status}
                     onChange={(e) => handleStatusChange(employee.id, e.target.value)}
                     className="text-sm border rounded px-2 py-1"
                   >
@@ -392,13 +392,13 @@ export default function EmployeesPage() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
-                    <button 
+                    <button
                       onClick={() => window.location.href = `/employees/edit/${employee.id}`}
                       className="text-indigo-600 hover:text-indigo-900"
                     >
                       แก้ไข
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleDeleteEmployee(employee)}
                       className="text-red-600 hover:text-red-900"
                     >
@@ -410,7 +410,7 @@ export default function EmployeesPage() {
             ))}
           </tbody>
         </table>
-        
+
         {employees.length === 0 && (
           <div className="text-center py-8">
             <p className="text-gray-500">ยังไม่มีข้อมูลพนักงาน</p>

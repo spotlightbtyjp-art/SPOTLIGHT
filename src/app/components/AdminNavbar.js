@@ -7,13 +7,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { auth } from "@/app/lib/firebase";
 import { signOut } from "firebase/auth";
 
-// --- Custom Hook สำหรับ dropdown ---
+// --- Icons ---
+const Icons = {
+  Menu: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>,
+  ChevronDown: ({ className }) => <svg className={`w-4 h-4 transition-transform ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+  Bell: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
+  Logout: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>,
+  Empty: () => <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
+  Check: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>,
+  Trash: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+};
+
+// --- Custom Hook ---
 function useClickOutside(ref, handler) {
   useEffect(() => {
     const listener = (event) => {
-      if (!ref.current || ref.current.contains(event.target)) {
-        return;
-      }
+      if (!ref.current || ref.current.contains(event.target)) return;
       handler(event);
     };
     document.addEventListener("mousedown", listener);
@@ -55,7 +64,7 @@ const navLinks = [
   },
 ];
 
-const NavLink = ({ link, currentPath, onClick = () => {} }) => {
+const NavLink = ({ link, currentPath, onClick = () => { } }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   useClickOutside(dropdownRef, () => setIsOpen(false));
@@ -64,28 +73,39 @@ const NavLink = ({ link, currentPath, onClick = () => {} }) => {
 
   if (link.items) {
     return (
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative group" ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium flex items-center justify-between ${isActive ? "bg-primary-dark text-white" : "text-gray-600 hover:bg-gray-100"}`}
+          className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1 transition-all duration-200 ${isActive
+            ? "bg-yellow-50 text-yellow-900 shadow-sm ring-1 ring-yellow-100"
+            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            }`}
         >
           {link.name}
-          <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+          <Icons.ChevronDown className={isOpen ? 'rotate-180' : ''} />
         </button>
-        {isOpen && (
-          <div className="mt-2 w-full bg-white rounded-md shadow-lg py-1 z-20 border md:absolute md:right-0 md:w-56">
-            {link.items.map(item => (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={onClick}
-                className={`px-4 py-2 text-sm flex items-center ${currentPath === item.href ? 'bg-gray-100 text-gray-900 font-bold' : 'text-gray-700 hover:bg-gray-100'}`}
-              >
-                {item.name}
-              </Link>
-            ))}
+
+        {/* Dropdown Menu */}
+        <div className={`absolute left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden transition-all duration-200 origin-top-left z-50 ${isOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
+          <div className="py-1">
+            {link.items.map(item => {
+              const isItemActive = currentPath === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => { setIsOpen(false); onClick(); }}
+                  className={`block px-4 py-2.5 text-sm transition-colors ${isItemActive
+                    ? 'bg-yellow-50 text-yellow-900 font-medium border-l-4 border-yellow-500'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
+                    }`}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
     )
   }
@@ -94,9 +114,12 @@ const NavLink = ({ link, currentPath, onClick = () => {} }) => {
     <Link
       href={link.href}
       onClick={onClick}
-  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${isActive ? "bg-primary-dark text-white font-bold" : "text-gray-600 hover:bg-gray-100"}`}
+      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${isActive
+        ? "bg-yellow-900 text-white shadow-md shadow"
+        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+        }`}
     >
-  {link.name}
+      {link.name}
     </Link>
   )
 }
@@ -108,46 +131,22 @@ export default function AdminNavbar() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifPopoverRef = useRef(null);
   const autoCloseTimeoutRef = useRef(null);
-  const { 
-    toasts = [], 
-    markAsRead, 
-    markAllAsRead,
-    removeToast, 
-    clearAllToasts,
-    hasUnread 
-  } = useToast();
+  const { toasts = [], markAsRead, markAllAsRead, removeToast, clearAllToasts, hasUnread } = useToast();
 
   useClickOutside(notifPopoverRef, () => setIsNotifOpen(false));
 
-  // ตรวจสอบการแจ้งเตือนใหม่และเปิดกล่องอัตโนมัติ
+  // Auto-open notifications logic
   const prevToastsLengthRef = useRef(toasts.length);
   useEffect(() => {
-    // ถ้ามีการแจ้งเตือนใหม่ (จำนวน toasts เพิ่มขึ้น)
     if (toasts.length > prevToastsLengthRef.current && toasts.length > 0) {
       setIsNotifOpen(true);
-      
-      // ล้าง timeout เก่า (ถ้ามี)
-      if (autoCloseTimeoutRef.current) {
-        clearTimeout(autoCloseTimeoutRef.current);
-      }
-      
-      // ตั้ง timeout ใหม่สำหรับปิดอัตโนมัติหลัง 3 วินาที
-      autoCloseTimeoutRef.current = setTimeout(() => {
-        setIsNotifOpen(false);
-      }, 3000);
+      if (autoCloseTimeoutRef.current) clearTimeout(autoCloseTimeoutRef.current);
+      autoCloseTimeoutRef.current = setTimeout(() => setIsNotifOpen(false), 3000);
     }
-    
     prevToastsLengthRef.current = toasts.length;
   }, [toasts.length]);
 
-  // ล้าง timeout เมื่อ component unmount
-  useEffect(() => {
-    return () => {
-      if (autoCloseTimeoutRef.current) {
-        clearTimeout(autoCloseTimeoutRef.current);
-      }
-    };
-  }, []);
+  useEffect(() => () => autoCloseTimeoutRef.current && clearTimeout(autoCloseTimeoutRef.current), []);
 
   const handleLogout = async () => {
     try {
@@ -159,175 +158,161 @@ export default function AdminNavbar() {
   };
 
   const toggleNotifPopover = () => {
-    // ล้าง auto-close timeout เมื่อผู้ใช้เปิด-ปิดเอง
     if (autoCloseTimeoutRef.current) {
       clearTimeout(autoCloseTimeoutRef.current);
       autoCloseTimeoutRef.current = null;
     }
     const newIsOpen = !isNotifOpen;
     setIsNotifOpen(newIsOpen);
-    // ถ้าเปิดกล่องแจ้งเตือน ให้ทำเครื่องหมายว่าอ่านทั้งหมด
-    if (newIsOpen) {
-      markAllAsRead();
-    }
+    if (newIsOpen) markAllAsRead();
   };
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-10">
-      <div className="container mx-auto px-4 md:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* [!code focus start] */}
-          {/* --- Left Side --- */}
-          <div className="flex items-center">
-            {/* Hamburger Button for Mobile */}
-            <div className="md:hidden mr-2">
-                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-md hover:bg-gray-100">
-                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-                </button>
-            </div>
-            {/* Title */}
-            <Link href="/dashboard" className="text-xl font-bold text-slate-800" >
-              Dashboard
+    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 transition-all">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between h-16 items-center">
+
+          {/* --- Left Side: Logo & Mobile Menu --- */}
+          <div className="flex items-center gap-4  ">
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">
+              <Icons.Menu />
+            </button>
+            <Link href="/dashboard" className="flex items-center gap-2 group">
+              <span className="px-4 text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-900 to-yellow-800">
+                Dashboard
+              </span>
             </Link>
           </div>
-          {/* [!code focus end] */}
-          
-          {/* --- Desktop Menu (Center) --- */}
-          <div className="hidden md:flex items-center space-x-2">
+
+          {/* --- Center: Desktop Navigation --- */}
+          <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
               <NavLink key={link.name} link={link} currentPath={pathname} />
             ))}
           </div>
 
-          {/* --- Right Side --- */}
-          <div className="flex items-center">
-            {/* ไอคอนแจ้งเตือนใน navbar */}
+          {/* --- Right Side: Notifications & Profile --- */}
+          <div className="flex items-center gap-3">
+            {/* Notification Bell */}
             <div className="relative" ref={notifPopoverRef}>
               <button
                 onClick={toggleNotifPopover}
-                className={`p-2 rounded-full hover:bg-gray-100 relative transition-colors ${
-                  hasUnread ? 'text-red-600' : 'text-gray-600'
-                }`}
+                className={`p-2.5 rounded-xl transition-all duration-200 relative ${hasUnread ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                  }`}
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+                <Icons.Bell />
                 {hasUnread && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs font-bold">
-                    {toasts.filter(t => !t.read).length}
-                  </span>
+                  <span className="absolute top-2 right-2.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
                 )}
               </button>
-              
-              {/* กล่องแจ้งเตือน */}
+
+              {/* Notification Dropdown */}
               {isNotifOpen && (
-                <div className="absolute top-16 right-0 w-96 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-hidden z-30">
-                  {/* Header */}
-                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-800">แจ้งเตือน</h3>
-                    <div className="flex gap-2">
+                <div className="absolute top-full right-0 mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                  <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
+                    <h3 className="font-bold text-gray-900">การแจ้งเตือน</h3>
+                    <div className="flex gap-1">
                       {hasUnread && (
-                        <button
-                          onClick={markAllAsRead}
-                          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50"
-                        >
-                          อ่านทั้งหมด
+                        <button onClick={markAllAsRead} className="p-1.5 text-yellow-900 hover:bg-yellow-50 rounded-lg text-xs font-medium transition-colors" title="อ่านทั้งหมด">
+                          <Icons.Check />
                         </button>
                       )}
-                      <button
-                        onClick={clearAllToasts}
-                        className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-50"
-                      >
-                        ลบทั้งหมด
+                      <button onClick={clearAllToasts} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg text-xs font-medium transition-colors" title="ลบทั้งหมด">
+                        <Icons.Trash />
                       </button>
                     </div>
                   </div>
 
-                  {/* รายการแจ้งเตือน */}
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                     {toasts.length === 0 ? (
-                      <div className="p-8 text-center text-gray-500">
-                        <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        <p>ไม่มีการแจ้งเตือน</p>
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <Icons.Empty />
+                        <p className="mt-2 text-sm">ไม่มีการแจ้งเตือนใหม่</p>
                       </div>
                     ) : (
-                      // แสดง 5 รายการล่าสุด โดยใหม่ที่สุดอยู่บนสุด
-                      toasts.slice(-5).reverse().map(toast => (
-                        <div
-                          key={toast.id}
-                          className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                            !toast.read ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                              toast.type === 'error' ? 'bg-red-500' : 
-                              toast.type === 'success' ? 'bg-green-500' : 
-                              toast.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-                            }`}></div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${!toast.read ? 'font-medium' : ''} ${
-                                toast.type === 'error' ? 'text-red-700' : 
-                                toast.type === 'success' ? 'text-green-700' : 
-                                toast.type === 'warning' ? 'text-yellow-700' : 'text-blue-700'
-                              }`}>
-                                {toast.message}
-                              </p>
-                              {toast.timestamp && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {toast.timestamp.toLocaleTimeString('th-TH')}
+                      <div className="divide-y divide-gray-50">
+                        {toasts.slice(-5).reverse().map(toast => (
+                          <div key={toast.id} className={`p-4 hover:bg-gray-50 transition-colors relative group ${!toast.read ? 'bg-yellow-50/30' : ''}`}>
+                            <div className="flex gap-3">
+                              <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${toast.type === 'error' ? 'bg-red-500' :
+                                toast.type === 'success' ? 'bg-green-500' :
+                                  toast.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+                                }`}></div>
+                              <div className="flex-1">
+                                <p className={`text-sm leading-snug ${!toast.read ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
+                                  {toast.message}
                                 </p>
-                              )}
-                            </div>
-
-                            <div className="flex gap-1">
-                              {!toast.read && (
-                                <button
-                                  onClick={() => markAsRead(toast.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-100"
-                                  title="อ่านแล้ว"
-                                >
-                                  อ่าน
-                                </button>
-                              )}
-                              <button
-                                onClick={() => removeToast(toast.id)}
-                                className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded hover:bg-red-100"
-                                title="ลบ"
-                              >
-                                ลบ
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {toast.timestamp?.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                              <button onClick={() => removeToast(toast.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 transition-all">
+                                <Icons.Trash />
                               </button>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               )}
             </div>
-            
+
+            {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="ml-4 px-3 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"
             >
-              ออกจากระบบ
+              <Icons.Logout />
+              <span>ออก</span>
             </button>
           </div>
         </div>
-        
+
+        {/* --- Mobile Menu --- */}
         {isMobileMenuOpen && (
-            <div className="md:hidden py-4 space-y-2">
-                 {navLinks.map((link) => (
-                    <NavLink key={link.name} link={link} currentPath={pathname} onClick={() => setIsMobileMenuOpen(false)} />
-                 ))}
+          <div className="md:hidden border-t border-gray-100 py-2 space-y-1 animate-in slide-in-from-top-5">
+            {navLinks.map((link) => (
+              <div key={link.name} className="px-2">
+                {link.items ? (
+                  <div className="space-y-1">
+                    <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">{link.name}</div>
+                    {link.items.map(item => (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`block px-3 py-2 rounded-lg text-sm font-medium ${pathname === item.href ? 'bg-yellow-50 text-yellow-900' : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <Link
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`block px-3 py-2 rounded-lg text-sm font-medium ${pathname === link.href ? 'bg-yellow-900 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                  >
+                    {link.name}
+                  </Link>
+                )}
+              </div>
+            ))}
+            <div className="border-t border-gray-100 mt-2 pt-2 px-2">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100"
+              >
+                <Icons.Logout /> ออกจากระบบ
+              </button>
             </div>
+          </div>
         )}
       </div>
     </nav>
   );
 }
-
