@@ -231,18 +231,6 @@ function ServiceDetailContent() {
                     </div>
                     <div className="flex-1 flex flex-col justify-center">
                         <h1 className="text-md font-bold text-gray-800 leading-tight">{service.serviceName}</h1>
-                        {service.serviceType === 'single' && (
-                            <div className="mb-3 p-3 bg-gray-50 rounded-lg mt-2">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">ระยะเวลา</span>
-                                    <span className="text-sm text-gray-800">{service.duration} นาที</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">ราคา</span>
-                                    <span className="text-sm text-gray-800">{profile.currency}{service.price?.toLocaleString()}</span>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 
