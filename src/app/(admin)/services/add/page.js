@@ -6,6 +6,7 @@ import { db } from '@/app/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/app/components/Toast';
 import { useProfile } from '@/context/ProfileProvider';
+import ImageUpload from '@/app/components/ImageUpload';
 
 // --- Icons ---
 const Icons = {
@@ -13,7 +14,6 @@ const Icons = {
     Tag: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>,
     Dollar: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
     Clock: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-    Image: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
     Save: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>,
     Plus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>,
     Trash: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -33,6 +33,7 @@ export default function AddServicePage() {
     const { profile } = useProfile();
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleImageChange = (url) => setFormData(prev => ({ ...prev, imageUrl: url }));
 
     // --- Handlers ---
     const handleAddOnChange = (idx, field, value) => {
@@ -270,14 +271,20 @@ export default function AddServicePage() {
                         )}
                     </div>
 
+                    {/* Image Upload Card */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                        <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-4 mb-6">รูปภาพบริการ</h2>
+                        <ImageUpload
+                            imageUrl={formData.imageUrl}
+                            onImageChange={handleImageChange}
+                            folder="services"
+                        />
+                    </div>
+
                     {/* Details Card */}
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                         <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-4 mb-6">รายละเอียดเพิ่มเติม</h2>
                         <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700"><Icons.Image /> URL รูปภาพ</label>
-                                <input name="imageUrl" value={formData.imageUrl} onChange={handleChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="https://..." />
-                            </div>
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-gray-700">รายละเอียดบริการ</label>
                                 <textarea name="details" value={formData.details} onChange={handleChange} rows="3" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-gray-50/50 focus:bg-white" placeholder="รายละเอียดบริการ..."></textarea>

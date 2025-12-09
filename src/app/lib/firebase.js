@@ -9,6 +9,7 @@ import {
   initializeAuth,
   browserLocalPersistence
 } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -25,12 +26,14 @@ const APP_NAME = 'SPA_V5_FINAL_LOCAL';
 let app;
 let db;
 let auth;
+let storage;
 
 try {
   // 1. ลองดึง App เดิมมา (ถ้ามี)
   app = getApp(APP_NAME);
   db = getFirestore(app);
   auth = getAuth(app);
+  storage = getStorage(app);
 } catch (e) {
   // 2. ถ้ายังไม่มี ให้สร้างใหม่แบบ "Memory Only" ทั้งระบบ
   app = initializeApp(firebaseConfig, APP_NAME);
@@ -46,7 +49,10 @@ try {
     persistence: browserLocalPersistence
   });
 
-  console.log(`🔥 Firebase (${APP_NAME}) initialized: Memory DB + Local Auth`);
+  // Config 3: Storage
+  storage = getStorage(app);
+
+  console.log(`🔥 Firebase (${APP_NAME}) initialized: Memory DB + Local Auth + Storage`);
 }
 
-export { db, auth };
+export { db, auth, storage };

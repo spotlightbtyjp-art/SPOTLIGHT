@@ -19,8 +19,8 @@ const notoSansThai = Noto_Sans_Thai({
 
 // 1. metadata ทั่วไป (ไม่มี viewport)
 export const metadata = {
-  title: "SPOTLIGHT",
-  description: "ไฮฟูคนไทยในญี่ปุ่น",
+  title: "Spa & Massage Booking System",
+  description: "ระบบจองบริการสปา",
 };
 
 // 2. เพิ่ม function generateViewport เพื่อปิดการซูม
@@ -45,5 +45,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
 

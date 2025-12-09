@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { db } from '@/app/lib/firebase';
+import { db, storage } from '@/app/lib/firebase';
 import { collection, getDocs, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ConfirmationModal } from '@/app/components/common/NotificationComponent';
@@ -113,6 +114,18 @@ export default function ServicesListPage() {
     if (!serviceToDelete) return;
     setIsDeleting(true);
     try {
+      // Delete image from storage if exists
+      if (serviceToDelete.imageUrl && (serviceToDelete.imageUrl.includes('firebasestorage.googleapis.com') || serviceToDelete.imageUrl.includes('firebasestorage.app'))) {
+        try {
+          const imageRef = ref(storage, serviceToDelete.imageUrl);
+          await deleteObject(imageRef).catch(err => {
+            if (err.code !== 'storage/object-not-found') console.error("Error deleting image:", err);
+          });
+        } catch (err) {
+          console.error("Error preparing image delete:", err);
+        }
+      }
+
       await deleteDoc(doc(db, 'services', serviceToDelete.id));
       setAllServices(prev => prev.filter(s => s.id !== serviceToDelete.id));
       showToast('ลบข้อมูลบริการสำเร็จ!', 'success');
